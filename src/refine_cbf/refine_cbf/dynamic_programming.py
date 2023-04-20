@@ -52,7 +52,7 @@ class DynamicProgramming(Node):
     grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(state_domain, grid_resolution, periodic_dims=2)
 
     # defining the constraint set
-    constraint_set = define_constraint_set("circular")
+    constraint_set = define_constraint_set("union")
 
     # defining the obstacle for the Hamilton Jacobi Reachability package
     obstacle = hj.utils.multivmap(constraint_set, jnp.arange(grid.ndim))(grid.states)  # l(x) terminal cost
@@ -88,6 +88,7 @@ class DynamicProgramming(Node):
         super().__init__('dp_node')
         self.cbf_publisher_ = self.create_publisher(Bool, 'cbf_availability', 10)
         self.obstacle_publisher_ = self.create_publisher(Path, 'obstacle', 10)
+        self.internal_obstacle_publisher_ = self.create_publisher(Path, 'obstacle_internal', 10)
         self.safe_set_publisher_ = self.create_publisher(Path, 'safe_set', 10)
         self.internal_safe_set_publisher_ = self.create_publisher(Path, 'safe_set_internal', 10)
         self.initial_safe_set_publisher_ = self.create_publisher(Path, 'initial_safe_set', 10)
@@ -182,6 +183,15 @@ class DynamicProgramming(Node):
         self.obstacle_publisher_.publish(msg)
         self.get_logger().info('Publishing: Obstacle Path')
 
+    def publish_internal_obstacle(self, vertices):
+
+        # create a path message based on obstacle vertices
+        msg = self.create_path_msg(vertices)
+
+        # publish the message
+        self.internal_obstacle_publisher_.publish(msg)
+        self.get_logger().info('Publishing: Internal Obstacle Path')
+
     def publish_initial_safe_set(self, vertices):
 
         # create a path message based on the initial safe set vertices
@@ -207,10 +217,10 @@ class DynamicProgramming(Node):
         fig, ax = plt.subplots(1, 1, figsize=(18,18 ))
 
         # Initial contour plot of the 0 level set
-        cs = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., -1], levels=[0], colors='k')
+        safe_set_contour = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., -1], levels=[0], colors='k')
 
         # retrieve vertices of the contour for Rviz visualization
-        self.initial_safe_set_vertices = cs.collections[0].get_paths()[0].vertices
+        self.initial_safe_set_vertices = safe_set_contour.collections[0].get_paths()[0].vertices
 
         # create contour of obstacle
         obst_contour = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.obstacle[..., 0], levels=[0], colors='r')
@@ -231,25 +241,32 @@ class DynamicProgramming(Node):
 
             # plot the contour of the 0 level set of the cbf (the safe set) at particular theta slice
             theta_slice = 0
-            cs = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., theta_slice], levels=[0], colors='k')   
+            safe_set_contour = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., theta_slice], levels=[0], colors='k')   
 
             # contour paths
-            paths = cs.collections[0].get_paths()
+            paths_safe_set = safe_set_contour.collections[0].get_paths()
+            paths_obstacle = obst_contour.collections[0].get_paths()
 
             # obtain vertices of the contour for Rviz visualization
-            self.safe_set_vertices = paths[0].vertices
-
-            # in order to show the safe set contour which envelops an obstacle, we must extract the vertices of the second contour
-            # the length of the paths list will exceed 1 if the safe set contour envelops an obstacle
-            if len(paths) > 1:
-                internal_path = cs.collections[0].get_paths()[1]
-                internal_vertices = internal_path.vertices
-                self.publish_internal_safe_set(internal_vertices)
+            self.safe_set_vertices = paths_safe_set[0].vertices
 
             # Publish contours as paths for Rviz visualization
             self.publish_obstacle(self.obst_vertices)
             self.publish_initial_safe_set(self.initial_safe_set_vertices)  
-            self.publish_safe_set(self.safe_set_vertices)                  
+            self.publish_safe_set(self.safe_set_vertices) 
+
+            # in order to show the safe set contour which envelops an obstacle, we must extract the vertices of the second contour
+            # the length of the paths list will exceed 1 if the safe set contour envelops an obstacle
+            if len(paths_safe_set) > 1:
+                internal_path = safe_set_contour.collections[0].get_paths()[1]
+                internal_vertices = internal_path.vertices
+                self.publish_internal_safe_set(internal_vertices)
+
+            # to show internal obstacle contour, we must extract the vertices of the second contour
+            if len(paths_obstacle) > 1:
+                internal_path = obst_contour.collections[0].get_paths()[1]
+                internal_vertices = internal_path.vertices
+                self.publish_internal_obstacle(internal_vertices)
 
             # save the current cbf to a file
             jnp.save('./log/cbf.npy', self.cbf)
@@ -261,7 +278,8 @@ class DynamicProgramming(Node):
             print("Saving value function...")
 
             # prompt user if they want to generate another cbf
-            iterate = input("Generate another cbf? (y/n): ")
+            #iterate = input("Generate another cbf? (y/n): ")
+            iterate = 'y'
 
             if iterate == 'y':
                 iterate = True

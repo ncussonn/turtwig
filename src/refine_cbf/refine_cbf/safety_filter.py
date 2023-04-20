@@ -53,7 +53,7 @@ class SafetyFilter(Node):
         '''Defining Node Attributes'''
 
         # Load nominal policy table
-        self.nominal_policy_table = np.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_coarse_grid.npy')
+        #self.nominal_policy_table = np.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_coarse_grid.npy')
 
         # Required to give an arbitrary dt to the dynamics object
         # TODO: rewrite dynamics object to not require this as a required argument
@@ -89,18 +89,18 @@ class SafetyFilter(Node):
         ###############################################
 
         # load the cbf (safety value function)
-        self.cbf = jnp.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomputed_cbf_2x2_coarse_grid.npy')
+        self.cbf = jnp.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomputed_cbf_2x2_coarse_grid_with_bounding_box.npy')
         # coarse grid = (31,31,21)
         # dense grid = (41,41,41)        
 
-        refineCBF = False
+        refineCBF = True
 
         if refineCBF == True:
-            # Use the initial value function to generate a tabular CBF
+            # Use the initial value function to generate the tabular CBF for safety filter
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
             self.tabular_cbf.vf_table = np.array(self.cbf[0]) # use time index 0 for initial cbf
         else: 
-            # Use the final value function to generate a tabular CBF
+            # Use the final value function to generate the tabular CBF for safety filter
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
             self.tabular_cbf.vf_table = np.array(self.cbf[-1])
 
@@ -108,7 +108,8 @@ class SafetyFilter(Node):
         self.diffdrive_asif = ControlAffineASIF(self.dyn, self.tabular_cbf, alpha=self.alpha, umin=self.umin, umax=self.umax)
 
         self.state = np.array([0.25, 0.25, 0])  # initial state
-        self.nominal_policy = np.array([0,0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
+        self.real_state = np.array([0.25, 0.25, 0])  # initial state
+        self.nominal_policy = np.array([0, 0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
 
         # quality of service profile for subscriber and publisher, provides buffer for messages
         # a depth of 10 suffices in most cases, but this can be increased if needed
@@ -194,49 +195,19 @@ class SafetyFilter(Node):
         # time node
         ctrl_start_time = time.time()
 
+        # Decide if want to use real state or simulated state
+        #self.state = self.real_state # overwrite state with real state
+
         # Compute Safety Value and Publish
         ############################################
 
         self.publish_safety_value()
 
-        # Compute Nominal Control
-        ############################################
-
-        # Offline, a nominal policy table was computed for every grid point in the state space.
-        
-        # DEBUG: If using nearest grid point, uncomment the following lines - to be removed at later date
-        #nearest_grid_point = self.grid.nearest_index(self.state)
-        #print(np.shape(nearest_grid_point))
-        #print(nearest_grid_point)
-        #nominal_policy = self.nominal_policy_table[nearest_grid_point[0], nearest_grid_point[1], nearest_grid_point[2], :]
-        #nominal_policy = np.reshape(nominal_policy, (1, self.dyn.control_dims))
-
-        # If using something other than nominal policy table for nominal policy, set the flag to True
-        use_external_nom_policy = False
-
-        if use_external_nom_policy is False:
-
-            # Get value of the nominal policy at the current state using a precomputed nominal policy table
-            nominal_policy = self.grid.interpolate(self.nominal_policy_table, self.state)
-            nominal_policy = np.reshape(nominal_policy, (1, self.dyn.control_dims))
-
-            print("Nominal Policy: ", nominal_policy)
-            # DEBUG: Print the shape and type of the nominal policy for verification
-            # print("Nominal Policy Shape: ", np.shape(nominal_policy))
-            # print("Nominal policy first element type: ", type(float(nominal_policy[0,0])))
-        
-        else:
-                
-            # Use the nominal policy from the external node
-            nominal_policy = self.nominal_policy
-            # reshape to proper dimensions
-            nominal_policy = np.reshape(nominal_policy, (1, self.dyn.control_dims))
-        
         # CBF-QP
         ############################################
 
         # DEBUG: Flag used to determine if nominal control input should be filtered or not. For testing purposes, not to be used in final implementation.
-        use_nom_policy = True
+        use_nom_policy = False
 
         if use_nom_policy is False:
 
@@ -244,6 +215,13 @@ class SafetyFilter(Node):
 
             # Time How Long It Takes To Solve QP
             start_time = time.time()
+
+            # DEBUG: Print the shape and type of the nominal policy for verification
+            print("Nominal Policy Shape: ", np.shape(self.nominal_policy))
+
+
+            # reshape to proper dimensions
+            nominal_policy = np.reshape(self.nominal_policy, (1, self.dyn.control_dims))
 
             # Solve the QP for the optimal control input
             control_input = self.diffdrive_asif(self.state, 0.0, nominal_policy)
@@ -261,11 +239,11 @@ class SafetyFilter(Node):
                 logging.debug('QP solver failed: Returned None')
                 logging.debug('State: "%s"' % self.state)
                 logging.debug('Safety Value: "%s"' % self.safety_value)
-                logging.debug('Nominal Policy: "%s"' % nominal_policy)
+                logging.debug('Nominal Policy: "%s"' % self.nominal_policy)
 
         else:
             # assign unflitered nominal policy as the final control input
-            control_input = nominal_policy
+            control_input = self.nominal_policy
 
         # Publish the Optimal Control Input
         ############################################
@@ -287,7 +265,7 @@ class SafetyFilter(Node):
 
         # Save visualization data
         ############################################
-        self.data_logger.append(x=self.state[0], y=self.state[1], theta=self.state[2], safety_value=self.safety_value, v=control_input[0,0], omega=control_input[0,1])
+        self.data_logger.append(x=self.state[0], y=self.state[1], theta=self.state[2], safety_value=self.safety_value, v=control_input[0,0], omega=control_input[0,1], v_nom=self.nominal_policy[0], omega_nom=self.nominal_policy[1])
           
     ##################################################
     ################### SUBSCRIBERS ##################

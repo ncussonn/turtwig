@@ -163,14 +163,18 @@ class ParameterStorage:
         self.safety_value = np.array([])
         self.v = np.array([])
         self.omega = np.array([])
+        self.v_nom = np.array([])
+        self.omega_nom = np.array([])
 
-    def append(self, x, y, theta, safety_value, v, omega):
+    def append(self, x, y, theta, safety_value, v, omega, v_nom, omega_nom):
         self.x = np.append(self.x, x)
         self.y = np.append(self.y, y)
         self.theta = np.append(self.theta, theta)
         self.safety_value = np.append(self.safety_value, safety_value)
         self.v = np.append(self.v, v)
         self.omega = np.append(self.omega, omega)
+        self.v_nom = np.append(self.v_nom, v_nom)
+        self.omega_nom = np.append(self.omega_nom, omega_nom)
 
     def plot_x(self):
         plt.plot(self.x)
@@ -214,8 +218,22 @@ class ParameterStorage:
         plt.ylabel('Value')
         plt.show()
 
+    def plot_v_nom(self):
+        plt.plot(self.v_nom)
+        plt.title('V Nom')
+        plt.xlabel('Time step')
+        plt.ylabel('Value')
+        plt.show()
+
+    def plot_omega_nom(self):
+        plt.plot(self.omega_nom)
+        plt.title('Omega Nom')
+        plt.xlabel('Time step')
+        plt.ylabel('Value')
+        plt.show() 
+
     def plot_all(self):
-        fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+        fig, axs = plt.subplots(2, 4, figsize=(14, 8))
         axs[0, 0].plot(self.x)
         axs[0, 0].set_title('X')
         axs[0, 1].plot(self.y)
@@ -228,12 +246,16 @@ class ParameterStorage:
         axs[1, 1].set_title('V')
         axs[1, 2].plot(self.omega)
         axs[1, 2].set_title('Omega')
+        axs[0, 3].plot(self.v_nom)
+        axs[0, 3].set_title('V Nominal')
+        axs[1, 3].plot(self.omega_nom)
+        axs[1, 3].set_title('Omega Nominal')
         plt.tight_layout()
         plt.show()
 
     # save data to a csv file
     def save_data(self, filename):
-        np.savetxt(filename, np.c_[self.x, self.y, self.theta, self.safety_value, self.v, self.omega], delimiter=',')
+        np.savetxt(filename, np.c_[self.x, self.y, self.theta, self.safety_value, self.v, self.omega, self.v_nom, self.omega_nom], delimiter=',')
         print("Data saved to " + filename)
 
     # load data from a csv file
@@ -245,4 +267,6 @@ class ParameterStorage:
         self.safety_value = data[:, 3]
         self.v = data[:, 4]
         self.omega = data[:, 5]
+        self.v_nom = data[:, 6]
+        self.omega_nom = data[:, 7]
         print("Data loaded from " + filename)
