@@ -2,8 +2,6 @@
 
 # TODO FIND OUT HOW TO GENERALIZE PACKAGE SO THIS CAN BE REMOVED
 import sys
-#sys.path.insert(0, '/home/nate/refineCBF')
-sys.path.insert(0, '/home/nate/refineCBF/experiment')                   # for nominal_hjr_control.py
 sys.path.insert(0, '/home/nate/turtwig_ws/src/refine_cbf/refine_cbf')   # for experiment_utils.py
 
 import os
@@ -13,7 +11,7 @@ import jax.numpy as jnp
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from std_msgs.msg import Float32
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
 import refine_cbfs
 from refine_cbfs.dynamics import HJControlAffineDynamics 
@@ -38,7 +36,7 @@ class NominalPolicy(Node):
     '''
     Noimnal Policy Node
 
-    - subscribed topics: \gazebo\odom, \odom
+    - subscribed topics: \gazebo\odom, \odom, \vicon_odom
     - published topics:  \nom_policy
 
     '''
@@ -49,6 +47,19 @@ class NominalPolicy(Node):
         super().__init__('nominal_policy')
 
         '''Defining Node Attributes'''
+
+        # Prompt user for configuration
+        print('Please select an experiment configuration based on the following series of prompts:')
+
+        # using simulation or real turtlebot3 burger state feedback
+        input_sim = input('Use simulation? (y/n): ')
+
+        if input_sim == 'y':
+            self.use_simulation = True
+        elif input_sim == 'n':
+            self.use_simulation = False       
+        else:
+            raise ValueError('Invalid input')
 
         # Load nominal policy table
         self.nominal_policy_table = np.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_coarse_grid_with_bounding_box.npy')
@@ -71,7 +82,7 @@ class NominalPolicy(Node):
         # initializing common parameters
         self.state = np.array([0.25, 0.25, 0])  # initial state
         self.real_state = np.array([0.25, 0.25, 0]) # initial real state
-        self.nominal_policy = np.array([0, 0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
+        self.nominal_policy = np.array([0.1, 0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
 
         # quality of service profile for subscriber and publisher, provides buffer for messages
         # a depth of 10 suffices in most cases, but this can be increased if needed
@@ -94,10 +105,18 @@ class NominalPolicy(Node):
             self.state_sub_callback,
             qos)
         
+        # # real state subscription
+        # self.real_state_sub = self.create_subscription(
+        #     Odometry,
+        #     'odom',
+        #     self.real_state_sub_callback,
+        #     qos)
+        
+        # VICON
         # real state subscription
         self.real_state_sub = self.create_subscription(
-            Odometry,
-            'odom',
+            TransformStamped,
+            '/vicon/turtlebot/turtlebot',
             self.real_state_sub_callback,
             qos)
     
@@ -117,7 +136,8 @@ class NominalPolicy(Node):
     def timer_callback(self):
         
         # Decide if want to use real state or simulated state
-        #self.state = self.real_state # overwrite state with real state
+        if self.use_simulation is False:
+            self.state = self.real_state # overwrite state with real state
 
         # Compute Nominal Control
         ############################################
@@ -161,10 +181,6 @@ class NominalPolicy(Node):
         self.nom_pol_publisher_.publish(msg)
         self.get_logger().info('Publishing nominal control input over topic /nom_policy.')
 
-        # Save visualization data
-        ############################################
-        #self.data_logger.append(x=self.state[0], y=self.state[1], theta=self.state[2], v=nominal_policy[0,0], omega=nominal_policy[0,1])
-          
     ##################################################
     ################### SUBSCRIBERS ##################
     ##################################################
@@ -182,16 +198,29 @@ class NominalPolicy(Node):
         
         print("Current Simulation State: ", self.state)
 
-    # Real State Subscription
+    # Odometry State Subscription
+    # def real_state_sub_callback(self, msg):
+
+    #     # Message to terminal
+    #     self.get_logger().info('Received new real state.')
+
+    #     # convert quaternion to euler angle
+    #     (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
+
+    #     self.real_state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
+        
+    #     print("Current real State: ", self.real_state)
+
+    # Vicon State Subscription
     def real_state_sub_callback(self, msg):
 
         # Message to terminal
         self.get_logger().info('Received new real state.')
 
         # convert quaternion to euler angle
-        (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
+        (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
 
-        self.real_state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
+        self.real_state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw])
         
         print("Current real State: ", self.real_state)
 
@@ -222,12 +251,6 @@ def main():
         msg.angular.z = 0.0
 
         nominal_policy.nom_pol_publisher_.publish(msg)
-
-        # save visualization parameters
-        #nominal_policy.data_logger.save_data(data_filename)
-
-        # plot all the data
-        #nominal_policy.data_logger.plot_all()
 
     finally:
 

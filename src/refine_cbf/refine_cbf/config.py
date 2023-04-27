@@ -78,6 +78,14 @@ def define_constraint_set(obstacle_type, **kwargs):
     Args:
         obstacle_type : String that defines the type of obstacle to use
 
+    Optional Args:
+        position: 1x2 array that defines the position of the center of the obstacle
+        length: 1x2 array that defines the length and width of obstacles with length and width
+        radius: scalar that defines the radius of circular obstacles
+        major_axis: scalar that defines the major axis of elliptical obstacles
+        minor_axis: scalar that defines the minor axis of elliptical obstacles
+        padding: TODO
+
     Returns:
         A function that is a constraint set based on the obstacle type
     """

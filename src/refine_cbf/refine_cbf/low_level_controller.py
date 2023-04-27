@@ -37,6 +37,21 @@ class LowLevelController(Node):
 
         super().__init__('low_level_controller')
 
+        '''Defining PID Controller Parameters'''
+        
+        # Gain Parameters
+        self.Kp = 1
+        self.Kd = 0
+        self.Ki = 0
+
+        # Error Parameters
+        self.error = 0
+        self.error_prev = 0
+        self.error_sum = 0
+
+        # Control Parameters
+        self.control = 0
+        
         '''Defining Node Attributes'''
 
         # quality of service profile for subscriber and publisher, provides buffer for messages
@@ -46,7 +61,7 @@ class LowLevelController(Node):
         # correctional control publisher
         self.control_publisher_ = self.create_publisher(
             Twist, 
-            'corrected_control',
+            'corrective_control',
             qos)
         
         # callback timer (how long to wait before running callback function)
@@ -79,6 +94,19 @@ class LowLevelController(Node):
 
     # callback function for timer
     def timer_callback(self):
+
+        # Compute error
+        self.error = self.state - self.real_state
+
+        # Compute corrective control using PID
+        self.control = self.Kp * self.error + self.Kd * (self.error - self.error_prev) + self.Ki * self.error_sum
+
+        # update previous error
+        self.error_prev = self.error
+
+        # update error sum
+        self.error_sum += self.error
+
         # publish control
         self.control_publisher_.publish(self.control)
         

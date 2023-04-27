@@ -3,8 +3,6 @@
 
 # TODO FIND OUT HOW TO GENERALIZE PACKAGE SO THIS CAN BE REMOVED
 import sys
-#sys.path.insert(0, '/home/nate/refineCBF')
-sys.path.insert(0, '/home/nate/refineCBF/experiment')                   # for nominal_hjr_control.py
 sys.path.insert(0, '/home/nate/turtwig_ws/src/refine_cbf/refine_cbf')   # for experiment_utils.py
 
 import os
@@ -14,7 +12,7 @@ import jax.numpy as jnp
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from std_msgs.msg import Bool, Float32
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
 from cbf_opt import ControlAffineDynamics, ControlAffineCBF, ControlAffineASIF
 import refine_cbfs
@@ -40,7 +38,7 @@ class SafetyFilter(Node):
     '''
     Safety Filter Node
 
-    - subscribed topics: \gazebo\odom, \cbf_availability, \odom, \nom_policy
+    - subscribed topics: \gazebo\odom, \cbf_availability, \odom, \nom_policy, \vicon_odom
     - published topics: \cmd_vel, \safety_value
 
     '''
@@ -51,6 +49,53 @@ class SafetyFilter(Node):
         super().__init__('safety_filter')
 
         '''Defining Node Attributes'''
+
+        # Prompt user for configuration
+        print('Please select an experiment configuration based on the following series of prompts:')
+
+        
+
+        # using simulation or real turtlebot3 burger state feedback
+        input_sim = input('Use simulation? (y/n): ')
+
+        if input_sim == 'y':
+            self.use_simulation = True
+            self.use_corr_control = False
+
+        elif input_sim == 'n':
+            # use corrective control or not
+            input_corr = input('Use corrective control? (y/n): ')
+            self.use_simulation = False
+
+            if input_corr == 'y':
+                self.use_corr_control = True
+            elif input_corr == 'n':
+                self.use_corr_control = False
+            else:
+                raise ValueError('Invalid input')
+        else:
+            raise ValueError('Invalid input')
+
+        # use nominal policy or filtered policy
+        input_nom = input('Bypass safety filter? (y/n): ')
+
+        if input_nom == 'y':
+            self.use_nom_policy = True
+        elif input_nom == 'n':
+            self.use_nom_policy = False
+            
+            # using the refineCBF algorithm or a CBF
+            input_refine = input('Using refineCBF to iteratively evolve CBF? (y/n): ')
+
+            if input_refine == 'y':
+                self.use_refineCBF = True
+            elif input_refine == 'n':
+                self.use_refineCBF = False
+            else:
+                raise ValueError('Invalid input')
+        
+        else:
+            raise ValueError('Invalid input')
 
         # Load nominal policy table
         #self.nominal_policy_table = np.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_coarse_grid.npy')
@@ -93,9 +138,7 @@ class SafetyFilter(Node):
         # coarse grid = (31,31,21)
         # dense grid = (41,41,41)        
 
-        refineCBF = True
-
-        if refineCBF == True:
+        if self.use_refineCBF == True:
             # Use the initial value function to generate the tabular CBF for safety filter
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
             self.tabular_cbf.vf_table = np.array(self.cbf[0]) # use time index 0 for initial cbf
@@ -107,9 +150,11 @@ class SafetyFilter(Node):
         # ASIF declaration
         self.diffdrive_asif = ControlAffineASIF(self.dyn, self.tabular_cbf, alpha=self.alpha, umin=self.umin, umax=self.umax)
 
+        # State and Control Variables to prevent unused variable errors
         self.state = np.array([0.25, 0.25, 0])  # initial state
         self.real_state = np.array([0.25, 0.25, 0])  # initial state
-        self.nominal_policy = np.array([0, 0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
+        self.nominal_policy = np.array([0.1, 0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
+        self.corrective_control = np.array([0, 0]) # initial corrective control
 
         # quality of service profile for subscriber and publisher, provides buffer for messages
         # a depth of 10 suffices in most cases, but this can be increased if needed
@@ -146,10 +191,18 @@ class SafetyFilter(Node):
             self.state_sub_callback,
             qos)
         
+        # # real state subscription
+        # self.real_state_sub = self.create_subscription(
+        #     Odometry,
+        #     'odom',
+        #     self.real_state_sub_callback,
+        #     qos)
+        
+        # VICON
         # real state subscription
         self.real_state_sub = self.create_subscription(
-            Odometry,
-            'odom',
+            TransformStamped,
+            '/vicon/turtlebot/turtlebot',
             self.real_state_sub_callback,
             qos)
         
@@ -159,12 +212,20 @@ class SafetyFilter(Node):
             'nom_policy',
             self.nom_policy_sub_callback,
             qos)
+        
+        # corrective control subscription
+        self.corr_ctrl_sub = self.create_subscription(
+            Twist,
+            'corrective_control',
+            self.corr_ctrl_sub_callback,
+            qos)
 
         # prevent unused variable warnings
         self.cbf_avail_sub    
         self.state_sub
         self.real_state_sub
         self.nom_policy_sub
+        self.corr_ctrl_sub
 
         # Data saving and visualization object
         self.data_logger = ParameterStorage()
@@ -196,7 +257,8 @@ class SafetyFilter(Node):
         ctrl_start_time = time.time()
 
         # Decide if want to use real state or simulated state
-        #self.state = self.real_state # overwrite state with real state
+        if self.use_simulation is False:
+            self.state = self.real_state # overwrite state with real state
 
         # Compute Safety Value and Publish
         ############################################
@@ -206,21 +268,18 @@ class SafetyFilter(Node):
         # CBF-QP
         ############################################
 
-        # DEBUG: Flag used to determine if nominal control input should be filtered or not. For testing purposes, not to be used in final implementation.
-        use_nom_policy = False
+        # DEBUG: Print the shape and type of the nominal policy for verification
+        print("Nominal Policy Shape: ", np.shape(self.nominal_policy))
 
-        if use_nom_policy is False:
+       
+        if self.use_nom_policy is False:
 
             # Use the Safety Filter
 
             # Time How Long It Takes To Solve QP
             start_time = time.time()
 
-            # DEBUG: Print the shape and type of the nominal policy for verification
-            print("Nominal Policy Shape: ", np.shape(self.nominal_policy))
-
-
-            # reshape to proper dimensions
+             # reshape to proper dimensions
             nominal_policy = np.reshape(self.nominal_policy, (1, self.dyn.control_dims))
 
             # Solve the QP for the optimal control input
@@ -242,8 +301,14 @@ class SafetyFilter(Node):
                 logging.debug('Nominal Policy: "%s"' % self.nominal_policy)
 
         else:
-            # assign unflitered nominal policy as the final control input
+            # bypass the safety filter and use the nominal policy
             control_input = self.nominal_policy
+
+        # Add the corrective control input to the optimal control input
+        if self.use_corr_control is True:
+            # Add the corrective control input to the optimal control input
+            control_input = control_input + self.corrective_control
+
 
         # Publish the Optimal Control Input
         ############################################
@@ -305,6 +370,21 @@ class SafetyFilter(Node):
         
         print("Current Simulation State: ", self.state)
 
+    # TB3 ODOMETRY
+    # # Real State Subscription
+    # def real_state_sub_callback(self, msg):
+
+    #     # Message to terminal
+    #     self.get_logger().info('Received new real state.')
+
+    #     # convert quaternion to euler angle
+    #     (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
+
+    #     self.real_state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
+        
+    #     print("Current real State: ", self.real_state)
+
+    # VICON ODOMETRY
     # Real State Subscription
     def real_state_sub_callback(self, msg):
 
@@ -312,25 +392,32 @@ class SafetyFilter(Node):
         self.get_logger().info('Received new real state.')
 
         # convert quaternion to euler angle
-        (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
+        (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
 
-        self.real_state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
+        self.real_state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw])
         
         print("Current real State: ", self.real_state)
 
         
     # Nominal Policy subscription
-    # NOTE: may not be used in final implementation
     def nom_policy_sub_callback(self, msg):
 
         # Message to terminal
-        self.get_logger().info('Received new command.')
+        self.get_logger().info('Received new high level controller command.')
 
-        self.nominal_policy = np.array([msg.linear.x, msg.angular.z])
-        #self.nominal_policy = np.reshape(self.nominal_policy, (1, self.dyn.control_dims))
+        self.nominal_policy = np.array([msg.linear.x, msg.angular.z])        
         
+        print("Current Nominal Policy: ", self.nominal_policy)
+
+    # Corrective Control subscription
+    def corr_ctrl_sub_callback(self, msg):
+
+        # Message to terminal
+        self.get_logger().info('Received new corrective control.')
+
+        self.corrective_control = np.array([msg.linear.x, msg.angular.z])        
         
-        print("Current Control: ", self.nominal_policy)
+        print("Current Corrective Control: ", self.corrective_control)
 
 def main():
 

@@ -20,7 +20,7 @@ from sensor_msgs.msg import PointCloud2, PointField
 # inheritance: ControlAffineDynamics class from the cbf_opt package
 class DiffDriveDynamics(ControlAffineDynamics):
     STATES   = ['X', 'Y', 'THETA'] # state vector of f(x,u): x
-    CONTROLS = ['VEL', 'OMEGA']  # control vector of f(x,u): u
+    CONTROLS = ['VEL', 'OMEGA']    # control vector of f(x,u): u
     
     # parameterized constructor: dictionary object params, bool test, **kwargs
     # **kwargs allows a variable number of keyword arguments to be passed to a Python function
@@ -93,20 +93,21 @@ class DiffDriveCBF(ControlAffineCBF):
     # enforced to return None
     def __init__(self, dynamics: DiffDriveDynamics, params: dict = dict(), **kwargs) -> None:
         # define center, radius and scalar attributes from the dictionary argument
-        self.center = params["center"]
-        self.r = params["r"]
-        self.scalar = params["scalar"]
+        self.center = params["center"]  # center of the circle defined by 0-superlevel set of h(x)
+        self.r = params["r"]            # radius of the circle defined by 0-superlevel set of h(x)
+        self.scalar = params["scalar"]  # scalar multipler of h(x)
+
         # call constructor from the super(base) class ControlAffineCBF
         super().__init__(dynamics, params, **kwargs)
 
-    # h(x) (Can also be viewed as a value function since this is a CBVF)
+    # h(x) (Can also be viewed as a value function as this is a CBVF)
     # class method: value function, accepts a numpy array of the state vector and float time
-    # used to warmstart dynamic programming of CBF
+    # used to warmstart dynamic programming portion of HJR for the CBF
     def vf(self, state, time=0.0):
-        # returns alpha*(r^2 - (x_state-x_center)^2 - (y_state - y_center)^2)
+        # returns scalar*(r^2 - (x_state-x_center)^2 - (y_state - y_center)^2)
         return self.scalar * (self.r ** 2 - (state[..., 0] - self.center[0]) ** 2 - (state[..., 1] - self.center[1]) ** 2)
 
-    # del_h(x) Can also be viewed as the gradient of a value function since this is a CBVF
+    # del_h(x) (Can also be viewed as the gradient of a value function since this is a CBVF)
     # class method: gradient of value function
     def _grad_vf(self, state, time=0.0):
         # make numpy array of same shape as state populated with 0's
@@ -117,7 +118,7 @@ class DiffDriveCBF(ControlAffineCBF):
         # second row of gradient is equal to the derivative w.r.t. y
         # -2 (y_state - y_circle)
         dvf_dx[..., 1] = -2 * (state[..., 1] - self.center[1])
-        # return the gradient times the constant that was factored out
+        # returns the gradient times the constant that was factored out
         return self.scalar * dvf_dx
 
 def euler_from_quaternion(x,y,z,w):

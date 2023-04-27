@@ -8,9 +8,7 @@ import sys; sys.version
 
 # TODO: REMOVE THESE LINES
 import sys
-#sys.path.insert(0, '/home/nate/refineCBF')
-sys.path.insert(0, '/home/nate/refineCBF/experiment')
-sys.path.insert(0, '/home/nate/turtwig_ws/src/refine_cbf/refine_cbf')
+sys.path.insert(0, '/home/nate/turtwig_ws/src/refine_cbf/refine_cbf') # for experiment_utils.py
 
 import rclpy
 import numpy as np
@@ -25,7 +23,6 @@ import hj_reachability as hj
 import jax.numpy as jnp
 from experiment_utils import *
 import matplotlib.pyplot as plt
-
 
 class DynamicProgramming(Node):
 
@@ -100,27 +97,13 @@ class DynamicProgramming(Node):
         self.safe_set_vertices = []
         self.initial_safe_set_vertices = []
 
-    def publish_cbf(self):
-
-        # set cbf flag to true
-        self.cbf_available = True
-
-        # publish boolean value, indicating a new cbf is available
-        if self.cbf_available == True:
-
-            msg = Bool()
-            msg.data = True
-            self.cbf_publisher_.publish(msg)
-            self.get_logger().info('Publishing: "%s"' % msg.data)
-            self.cbf_available = False
-    
     def generate_pose_stamp(self, vertex, time_stamp):
 
         # generates a pose stamped message by using the vertices of the safe set
         pose_stamp_message = PoseStamped()
 
         # set the header
-        pose_stamp_message.header.frame_id = "map"
+        pose_stamp_message.header.frame_id = "odom"
         pose_stamp_message.header.stamp = time_stamp
         
         # set the pose
@@ -156,6 +139,24 @@ class DynamicProgramming(Node):
 
         return msg
 
+    ##################################################
+    ################### PUBLISHERS ###################
+    ##################################################
+
+    def publish_cbf(self):
+
+        # set cbf flag to true
+        self.cbf_available = True
+
+        # publish boolean value, indicating a new cbf is available
+        if self.cbf_available == True:
+
+            msg = Bool()
+            msg.data = True
+            self.cbf_publisher_.publish(msg)
+            self.get_logger().info('Publishing: "%s"' % msg.data)
+            self.cbf_available = False
+    
     def publish_safe_set(self, vertices):
 
         # create a path message based on the current safe set vertices
@@ -240,7 +241,7 @@ class DynamicProgramming(Node):
             target_time -= self.dt
 
             # plot the contour of the 0 level set of the cbf (the safe set) at particular theta slice
-            theta_slice = 0
+            theta_slice = 11
             safe_set_contour = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., theta_slice], levels=[0], colors='k')   
 
             # contour paths
@@ -278,8 +279,8 @@ class DynamicProgramming(Node):
             print("Saving value function...")
 
             # prompt user if they want to generate another cbf
-            #iterate = input("Generate another cbf? (y/n): ")
-            iterate = 'y'
+            iterate = input("Generate another cbf? (y/n): ")
+            #iterate = 'y'
 
             if iterate == 'y':
                 iterate = True
