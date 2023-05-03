@@ -89,9 +89,7 @@ class SafetyFilter(Node):
         ###############################################
 
         # load the cbf (safety value function)
-        self.cbf = jnp.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomputed_cbf_2x2_61_61_61_grid.npy')
-        # coarse grid = (31,31,21)
-        # dense grid = (41,41,41)        
+        self.cbf = jnp.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomputed_cbf_2x2_61_61_61_grid.npy')               
 
         # if bypassing the safety filter
         if self.use_nom_policy is False:

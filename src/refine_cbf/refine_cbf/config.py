@@ -99,8 +99,13 @@ use_vicon_arena_for_state = False
 
 # a dictionary of obstacles with the key being the obstacle type and the value being a dictionary of obstacle parameters
 OBSTACLES = {"circle": {"circle_1": {"center": np.array([1.0, 1.0]), "radius": 0.15}},
-                 "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length":np.array([2.0,2.0])},
-                 "rectangle": {"center": np.array([0.5, 1.5]),"length": np.array([0.15,0.15])}}}
+                 "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length":np.array([2.0,2.0])}},
+                 "rectangle": {"rectangle_1":{"center": np.array([0.5, 1.5]),"length": np.array([0.15,0.15])}}}
+
+OBSTACLES = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15},"circle_2": {"center": np.array([1.5, 0.5]),"radius": 0.15}},
+                 "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
+                 "rectangle": {"rectange_1":{"center": np.array([0.5, 1.5]),"length": np.array([0.15,0.15])}},
+                 }
 
 # padding around the obstacle
 # float that inflates the obstacles by a certain amount using Minkoswki sum

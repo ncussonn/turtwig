@@ -281,10 +281,10 @@ class DynamicProgramming(Node):
             if counter == 3:
 
                 # new dictionary of obstacles
-                obstacles = {"circle": {"center": np.array([1.0, 1.0]), "radius": 0.15},
-                 "bounding_box": {"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])},
-                 "rectangle": {"center": np.array([0.5, 1.5]),"length": np.array([0.15,0.15])},
-                 "circle": {"center": np.array([1.5, 0.5]),"radius": 0.15},}
+                obstacles = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15},"circle_2": {"center": np.array([1.5, 0.5]),"radius": 0.15}},
+                 "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
+                 "rectangle": {"rectange_1":{"center": np.array([0.5, 1.5]),"length": np.array([0.15,0.15])}},
+                 }
 
                 # redifine the constraint set
                 self.constraint_set = define_constraint_set(obstacles, self.obst_padding)

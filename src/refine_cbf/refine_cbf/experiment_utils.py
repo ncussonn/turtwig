@@ -436,25 +436,28 @@ def define_constraint_set(obstacles, padding):
             # loop through circle dictionary and define constraint set
             for circle in obstacles[obstacle_type]:
 
-                constraint = create_circle_constraint(obstacles[obstacle_type]["center"], obstacles[obstacle_type]["radius"], padding)
+                constraint = create_circle_constraint(obstacles[obstacle_type][circle]["center"], obstacles[obstacle_type][circle]["radius"], padding)
+                constraints_list.append(constraint)
 
         elif obstacle_type == "bounding_box":
 
             for bounding_box in obstacles[obstacle_type]:
 
-                constraint = create_bounding_box_constraint(obstacles[obstacle_type]["center"], obstacles[obstacle_type]["length"], padding)
+                constraint = create_bounding_box_constraint(obstacles[obstacle_type][bounding_box]["center"], obstacles[obstacle_type][bounding_box]["length"], padding)
+                constraints_list.append(constraint)
 
         elif obstacle_type == "rectangle":
 
             for rectangle in obstacles[obstacle_type]:
 
-                constraint = create_rectangle_constraint(obstacles[obstacle_type]["center"], obstacles[obstacle_type]["length"], padding)
+                constraint = create_rectangle_constraint(obstacles[obstacle_type][rectangle]["center"], obstacles[obstacle_type][rectangle]["length"], padding)
+                constraints_list.append(constraint)
 
         else: # if obstacle type is not supported yet
             raise NotImplementedError("Obstacle type is not supported yet.")
         
         # append to list of constraints
-        constraints_list.append(constraint)
+        #constraints_list.append(constraint)
 
 
     def constraint_set(state):

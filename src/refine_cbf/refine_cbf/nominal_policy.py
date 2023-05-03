@@ -95,7 +95,7 @@ class NominalPolicy(Node):
             qos)
         
         # callback timer (how long to wait before running callback function)
-        timer_period = 0.033 # seconds (equivalent to about ~20Hz, same as odometry/IMU update rate)
+        timer_period = 0.033 # seconds (equivalent to about ~20Hz, same as odometry/IMU update rate, any higher is pointless additional computing resources)
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
         # simulation state subscription
