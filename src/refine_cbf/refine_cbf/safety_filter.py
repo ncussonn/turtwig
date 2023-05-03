@@ -50,55 +50,7 @@ class SafetyFilter(Node):
 
         '''Defining Node Attributes'''
 
-        # Prompt user for configuration
-        print('Please select an experiment configuration based on the following series of prompts:')
-
-        
-
-        # using simulation or real turtlebot3 burger state feedback
-        input_sim = input('Use simulation? (y/n): ')
-
-        if input_sim == 'y':
-            self.use_simulation = True
-            self.use_corr_control = False
-
-        elif input_sim == 'n':
-            # use corrective control or not
-            input_corr = input('Use corrective control? (y/n): ')
-            self.use_simulation = False
-
-            if input_corr == 'y':
-                self.use_corr_control = True
-            elif input_corr == 'n':
-                self.use_corr_control = False
-            else:
-                raise ValueError('Invalid input')
-        else:
-            raise ValueError('Invalid input')
-
-        # use nominal policy or filtered policy
-        input_nom = input('Bypass safety filter? (y/n): ')
-
-        if input_nom == 'y':
-            self.use_nom_policy = True
-        elif input_nom == 'n':
-            self.use_nom_policy = False
-            
-            # using the refineCBF algorithm or a CBF
-            input_refine = input('Using refineCBF to iteratively evolve CBF? (y/n): ')
-
-            if input_refine == 'y':
-                self.use_refineCBF = True
-            elif input_refine == 'n':
-                self.use_refineCBF = False
-            else:
-                raise ValueError('Invalid input')
-        
-        else:
-            raise ValueError('Invalid input')
-
-        # Load nominal policy table
-        #self.nominal_policy_table = np.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_coarse_grid.npy')
+        safety_filter_node_config(self)
 
         # Required to give an arbitrary dt to the dynamics object
         # TODO: rewrite dynamics object to not require this as a required argument
@@ -106,12 +58,15 @@ class SafetyFilter(Node):
 
         # Environment Parameters
 
+        # TODO: SHOULD GO IN CONFIG FILE
         # defining the state_domain (upper and lower bounds of the state space)
         self.state_domain = hj.sets.Box(lo=jnp.array([0., 0., -jnp.pi]), hi=jnp.array([2., 2., jnp.pi]))
 
+        # TODO: SHOULD GO IN CONFIG FILE
         # define grid resolution as a tuple
-        self.grid_resolution = (31, 31, 21)
+        self.grid_resolution = (61, 61, 61)
 
+        # TODO: SHOULD GO IN CONFIG FILE
         # defining the state space grid
         self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=2)
       
@@ -134,18 +89,21 @@ class SafetyFilter(Node):
         ###############################################
 
         # load the cbf (safety value function)
-        self.cbf = jnp.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomputed_cbf_2x2_coarse_grid_with_bounding_box.npy')
+        self.cbf = jnp.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomputed_cbf_2x2_61_61_61_grid.npy')
         # coarse grid = (31,31,21)
         # dense grid = (41,41,41)        
 
-        if self.use_refineCBF == True:
-            # Use the initial value function to generate the tabular CBF for safety filter
-            self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
-            self.tabular_cbf.vf_table = np.array(self.cbf[0]) # use time index 0 for initial cbf
-        else: 
-            # Use the final value function to generate the tabular CBF for safety filter
-            self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
-            self.tabular_cbf.vf_table = np.array(self.cbf[-1])
+        # if bypassing the safety filter
+        if self.use_nom_policy is False:
+
+            if self.use_refineCBF == True:
+                # Use the initial value function to generate the tabular CBF for safety filter
+                self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
+                self.tabular_cbf.vf_table = np.array(self.cbf[0]) # use time index 0 for initial cbf
+            else: 
+                # Use the final value function to generate the tabular CBF for safety filter
+                self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
+                self.tabular_cbf.vf_table = np.array(self.cbf[-1])
 
         # ASIF declaration
         self.diffdrive_asif = ControlAffineASIF(self.dyn, self.tabular_cbf, alpha=self.alpha, umin=self.umin, umax=self.umax)

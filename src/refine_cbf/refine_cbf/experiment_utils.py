@@ -9,11 +9,6 @@ import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import math
-from config import *
-
-from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion, Twist, Vector3
-from nav_msgs.msg import Odometry, Path
-from sensor_msgs.msg import PointCloud2, PointField
 
 # Dynamics
 # class for the dynamics of the differential drive robot
@@ -271,3 +266,219 @@ class ParameterStorage:
         self.v_nom = data[:, 6]
         self.omega_nom = data[:, 7]
         print("Data loaded from " + filename)
+
+# safety filter node configuration
+def safety_filter_node_config(self):
+
+    # Prompt user for configuration
+    print('Please select an experiment configuration based on the following series of prompts:')
+
+    # using simulation or real turtlebot3 burger state feedback
+    input_sim = input('Use simulation? (y/n): ')
+
+    if input_sim == 'y':
+        self.use_simulation = True
+        self.use_corr_control = False
+
+    elif input_sim == 'n':
+        # use corrective control or not
+        input_corr = input('Use corrective control? (y/n): ')
+        self.use_simulation = False
+
+        if input_corr == 'y':
+            self.use_corr_control = True
+        elif input_corr == 'n':
+            self.use_corr_control = False
+        else:
+            raise ValueError('Invalid input')
+    else:
+        raise ValueError('Invalid input')
+
+    # use nominal policy or filtered policy
+    input_nom = input('Bypass safety filter? (y/n): ')
+
+    if input_nom == 'y':
+        self.use_nom_policy = True
+        self.use_refineCBF = False # prevent unused variable errors
+    elif input_nom == 'n':
+        self.use_nom_policy = False
+        
+        # using the refineCBF algorithm or a CBF
+        input_refine = input('Using refineCBF to iteratively evolve CBF? (y/n): ')
+
+        if input_refine == 'y':
+            self.use_refineCBF = True
+        elif input_refine == 'n':
+            self.use_refineCBF = False
+        else:
+            raise ValueError('Invalid input')
+    
+    else:
+        raise ValueError('Invalid input')
+
+
+
+# OBSTACLE TYPE
+
+# Options [x] means current functionality implemented:
+#  [x] Rectangular
+#  [x] Circular
+#  [x] Elliptical
+#  [ ] Bounding Box
+#  [ ] Line
+#  [ ] Point
+#  [ ] Rectangular Prism
+#  [ ] Cylinder
+#  [ ] Sphere (could remove circular?)
+#  [ ] Ellipsoid (could remove elliptical?)
+#  [ ] Union
+#  [ ] Polygonal
+#  [ ] ...
+
+def circle_constraint(state, center=np.array([1,1]), radius=1, padding=0):
+
+    distance = jnp.linalg.norm(state[:2] - center) - padding
+
+    return distance - radius
+
+def rectangle_constraint(state, center=np.array([1,1]), length=1, padding=0):
+    
+    # TODO: This needs to not only return a square, but also a rectangle
+
+    # extend the length of the square by the padding
+    length_with_padding = length + 2 * padding
+
+    # coordinate of bottom left corner of the obstacle
+    bottom_left = jnp.array(center - length_with_padding / 2)
+    
+    # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
+    return -jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
+                            state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
+
+def bounding_box_constraint(state, center, length=2, padding=0):
+    
+    # extend the length of the square by the padding
+    length_with_padding = length - 2 * padding
+
+    # coordinate of bottom left corner of the obstacle
+    bottom_left = jnp.array(center - length_with_padding / 2)
+
+    # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
+    return jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
+                            state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
+
+def create_circle_constraint(center, radius, padding):
+    
+        def circle_constraint(state):
+    
+            distance = jnp.linalg.norm(state[:2] - center) - padding
+    
+            return distance - radius
+    
+        return circle_constraint
+
+def create_rectangle_constraint(center, length, padding):
+    
+        def rectangle_constraint(state):
+
+            # extend the length of the square by the padding
+            length_with_padding = length + 2 * padding
+
+            # coordinate of bottom left corner of the obstacle
+            bottom_left = jnp.array(center - length_with_padding / 2)
+            
+            # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
+            return -jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
+                                    state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
+        
+        return rectangle_constraint
+
+def create_bounding_box_constraint(center, length, padding):
+    
+        def bounding_box_constraint(state):
+
+            # retract the length of the square by the padding
+            length_with_padding = length - 2 * padding
+
+            # coordinate of bottom left corner of the obstacle
+            bottom_left = jnp.array(center - length_with_padding / 2)
+
+            # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
+            return jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
+                                    state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
+        
+        return bounding_box_constraint
+
+def define_constraint_set(obstacles, padding):
+
+    """
+    Defines a constraint set l(x) based on obstacles provided.
+
+    Args:
+        obstacles : A dictionary of obstacles with the key being the obstacle type and the value being a dictionary of obstacle parameters
+        padding : Float that inflates the obstacles by a certain amount using Minkoswki sum
+
+    Returns:
+        A function that is a constraint set l(x) based on the given obstacles for use in Python HJ Reachability package. Takes current state as argument and
+        returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise).
+
+    Note: Only works with differential drive dynamics currently.
+    """
+
+    constraints_list = [] # list of constraints
+
+    # loop through obstacles dictionary and define constraint set based on obstacle type
+    for obstacle_type in obstacles:
+            
+        # if obstacle type is circular
+        if obstacle_type == "circle":
+
+            # loop through circle dictionary and define constraint set
+            for circle in obstacles[obstacle_type]:
+
+                constraint = create_circle_constraint(obstacles[obstacle_type]["center"], obstacles[obstacle_type]["radius"], padding)
+
+        elif obstacle_type == "bounding_box":
+
+            for bounding_box in obstacles[obstacle_type]:
+
+                constraint = create_bounding_box_constraint(obstacles[obstacle_type]["center"], obstacles[obstacle_type]["length"], padding)
+
+        elif obstacle_type == "rectangle":
+
+            for rectangle in obstacles[obstacle_type]:
+
+                constraint = create_rectangle_constraint(obstacles[obstacle_type]["center"], obstacles[obstacle_type]["length"], padding)
+
+        else: # if obstacle type is not supported yet
+            raise NotImplementedError("Obstacle type is not supported yet.")
+        
+        # append to list of constraints
+        constraints_list.append(constraint)
+
+
+    def constraint_set(state):
+
+        """
+        A real-valued function s.t. the zero-superlevel set is the safe set
+
+        Args:
+            state : An unbatched (!) state vector, an array of shape `(3,)` containing `[x, y, omega]`.
+
+        Returns:
+            A scalar, positive iff the state is in the safe set, negative or 0 otherwise.
+        """
+
+        # initialize numpy array of constraints
+        numpy_array_of_constraints = np.array([])
+
+        # loop through list of constraints
+        for l in constraints_list:
+                
+            # append constraint to numpy array
+            numpy_array_of_constraints = jnp.append(numpy_array_of_constraints, l(state))
+
+        # loop through numpy array of constraints and take the piecewise minimum
+        return jnp.min(numpy_array_of_constraints)
+        
+    return constraint_set

@@ -2,18 +2,112 @@
 
 import numpy as np
 import jax.numpy as jnp
+import refine_cbfs
+from refine_cbfs.dynamics import HJControlAffineDynamics
+from cbf_opt import ControlAffineDynamics, ControlAffineCBF
+from experiment_utils import *
 
-# HAMILTON JACOBI REACHABILITY GRID
+# LIST OF PARAMETERS SOMEONE MIGHT WANT TO CHANGE
+# 1. HJ Grid
+# 2. Constraint set / Obstacles
+# 3. Dynamic Model
+# 4. Control Space Parameters
+# 5. Disturbance Space
+# 6. Initial CBF
 
-# Defining HJ Grid
+## HAMILTON JACOBI REACHABILITY GRID
+
+# Density of grid
+# tuple of size equal to state space dimension that defines the number of grid points in each dimension
+# For example, a differential drive dynamics robot will have a 3D state space (x, y, theta)
+GRID_RESOLUTION = (31, 31, 21)
 
 # Lower and upper bounds of the discretized state space
-grid_lower = jnp.array([0., 0., -jnp.pi])
-grid_upper = jnp.array([2., 2., jnp.pi])
+# numpy array with dimensions equal to state space dimension
+# For example, a differential drive dynamics robot will have a 3D state space and the resulting numpy array will be of size (3,)
+GRID_LOWER = np.array([0., 0., -np.pi])
+GRID_UPPER = np.array([2., 2., np.pi])
 
-grid_resolution = (31, 31, 21) # number of grid points in each dimension
+# Periodic dimensions
+# A single integer or tuple of integers denoting which dimensions are periodic in the case that
+# the `boundary_conditions` are not explicitly provided as input.
+# For example, a differential drive dynamics robot will have a 3D state space (x, y, theta), where theta is periodic, which is the third dimension (index 2)
+PERIODIC_DIMENSIONS = 2
 
-# DYNAMIC MODEL
+## BYPASS SAFETY FILTER
+
+# If True, the safety filter will be bypassed and the nominal policy will be used
+# If False, the safety filter will be used
+bypass_safety_filter = False
+
+## CONTROL SPACE
+
+# Control space parameters
+# two arrays with size of the control space dimension that define the lower and upper bounds of the control space
+# For instance, a differential drive dynamics robot will have a 2D control space (v, omega) and if
+# using a Turtlebot3 Burger, the control space will be bounded by v_min = 0.1, v_max = 0.22, omega_max/omega_min = +/- 2.63
+
+U_MIN = np.array([0.1, -2.63])
+U_MAX = np.array([0.21, 2.63])
+
+## DYNAMICS
+
+DYNAMICS = DiffDriveDynamics({"dt": 0.05}, test=False)  # dt is an arbitrary value choice, as the dynamics object requires a dt 
+                                                       # value for its constructor argument but it is not used for this package
+
+DYNAMICS_JAX_NUMPY = DiffDriveJNPDynamics({"dt": 0.05}, test=False) # dt is an arbitrary value choice, as the dynamics object requires a dt 
+                                                                   # value for its constructor argument but it is not used for this package
+
+DYNAMICS_HAMILTON_JACOBI_REACHABILITY = HJControlAffineDynamics(DYNAMICS_JAX_NUMPY, control_space=hj.sets.Box(jnp.array(U_MIN), jnp.array(U_MAX)))
+
+## CONTROL BARRIER FUNCTION (CBF)
+
+# Gamma value for the CBF
+GAMMA = 1.0
+
+# Scalar multiplier for the CBF
+SCALAR = 1.0
+
+# Initial CBF Parameters
+RADIUS_CBF = 0.15 # radius of the circular CBF
+CENTER_CBF = np.array([0.5, 0.5]) # center of the circular CBF
+
+CBF = DiffDriveCBF(DYNAMICS, {"center": CENTER_CBF, "r": RADIUS_CBF, "scalar": SCALAR}, test=False)
+
+# constructor parameters: dt = 0.05, test = False
+#dyn = DiffDriveDynamics({"dt": dt}, test=False)
+
+# instantiate an objected called dyn_jnp based on the DiffDriveJNPDynamics class
+# constructor parameters: dt = 0.05, test = False
+#dyn_jnp = DiffDriveJNPDynamics({"dt": dt}, test=False)
+
+## USE SIMULATION FOR STATE
+
+# If True, the state will retrieved from Gazebo simulation
+# If False, the state will be retrieved from sensors
+use_simulation_for_state = False
+
+# USE VICON ARENA FOR STATE
+
+# If True, the state is intending to be retrieved from Vicon Arena
+# If False, the state is not intending to be retrieved from Vicon Arena
+use_vicon_arena_for_state = False
+
+# TODO: INSERT OTHER STATE RETRIEVAL METHODS HERE
+
+## CONSTRAINT SET / OBSTACLES
+
+# a dictionary of obstacles with the key being the obstacle type and the value being a dictionary of obstacle parameters
+OBSTACLES = {"circle": {"circle_1": {"center": np.array([1.0, 1.0]), "radius": 0.15}},
+                 "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length":np.array([2.0,2.0])},
+                 "rectangle": {"center": np.array([0.5, 1.5]),"length": np.array([0.15,0.15])}}}
+
+# padding around the obstacle
+# float that inflates the obstacles by a certain amount using Minkoswki sum
+# For example, if the maximum radius of a robot is 0.15 m, the padding should be at least 0.15 m
+OBSTACLE_PADDING = 0.11
+
+# DYNAMICS MODEL
 
 # Options [x] means current functionality implemented:
 #  [x] Differential Drive
@@ -49,172 +143,3 @@ elif dynamic_model == "dubins_car":
 else: # if dynamic model is not supported yet
     raise NotImplementedError("Only differential drive dynamics and Dubin's car are currently supported")
 
-
-# OBSTACLE TYPE
-
-# Options [x] means current functionality implemented:
-#  [x] Rectangular
-#  [x] Circular
-#  [x] Elliptical
-#  [ ] Bounding Box
-#  [ ] Line
-#  [ ] Point
-#  [ ] Rectangular Prism
-#  [ ] Cylinder
-#  [ ] Sphere (could remove circular?)
-#  [ ] Ellipsoid (could remove elliptical?)
-#  [ ] Union
-#  [ ] Polygonal
-#  [ ] ...
-
-# Defining Constraint Set
-# returns a function that is a constraint set based on the obstacle type
-# TODO: make this more generalizable
-def define_constraint_set(obstacle_type, **kwargs):
-
-    """
-    Defines the constraint set based on the obstacle type
-
-    Args:
-        obstacle_type : String that defines the type of obstacle to use
-
-    Optional Args:
-        position: 1x2 array that defines the position of the center of the obstacle
-        length: 1x2 array that defines the length and width of obstacles with length and width
-        radius: scalar that defines the radius of circular obstacles
-        major_axis: scalar that defines the major axis of elliptical obstacles
-        minor_axis: scalar that defines the minor axis of elliptical obstacles
-        padding: TODO
-
-    Returns:
-        A function that is a constraint set based on the obstacle type
-    """
-
-    if obstacle_type == "rectangular":
-
-        def constraint_set(state):
-
-            """
-            A real-valued function s.t. the zero-superlevel set is the safe set
-
-            Args:
-                state : An unbatched (!) state vector, an array of shape `(3,)` containing `[x, y, omega]`.
-
-            Returns:
-                A scalar, positive iff the state is in the safe set, negative or 0 otherwise.
-            """
-
-            # EDIT THESE PARAMETERS
-            # rectangular obstacle parameters
-            obstacle_center = np.array([5.0, 5.0]) # rectangluar obstacle center
-            obstacle_length = np.array([2.0, 2.0]) # length & width of rectangular obstacle
-
-            # obstacle padding
-            obstacle_padding = np.array([0.25, 0.25]) # padding around the obstacle
-
-            # coordinate of bottom left corner of the obstacle
-            bottom_left = jnp.array(obstacle_center - obstacle_length / 2 - obstacle_padding)
-            # redefine obstacle_length (1x2 array) as length (2x2 square)
-            length = obstacle_length + 2 * obstacle_padding
-            # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
-            return -jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length[0] - state[0], 
-                                    state[1] - bottom_left[1], bottom_left[1] + length[1] - state[1]]))
-        
-    elif obstacle_type == "circular":
-
-        def constraint_set(state):
-
-            """
-            A real-valued function s.t. the zero-superlevel set is the safe set
-
-            Args:
-                state : An unbatched (!) state vector, an array of shape `(3,)` containing `[x, y, omega]`.
-
-            Returns:
-                A scalar, positive iff the state is in the safe set, negative or 0 otherwise.
-            """
-
-            # EDIT THESE PARAMETERS
-            # circular obstacle parameters
-            obstacle_center = np.array([1, 1])
-            obstacle_radius = 0.15
-
-            # obstacle padding
-            obstacle_padding = 0.11
-
-            # distance of the state from the center of the obstacle + obstacle padding
-            distance = jnp.linalg.norm(state[:2] - obstacle_center) - obstacle_padding
-
-            # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
-            return distance - obstacle_radius
-        
-    elif obstacle_type == "elliptical":
-
-        def constraint_set(state):
-
-            """
-            A real-valued function s.t. the zero-superlevel set is the safe set
-
-            Args:
-                state : An unbatched (!) state vector, an array of shape `(3,)` containing `[x, y, omega]`.
-
-            Returns:
-                A scalar, positive iff the state is in the safe set, negative or 0 otherwise.
-            """
-
-            # EDIT THESE PARAMETERS
-            obstacle_center = np.array([5.0, 5.0])
-            major_axis = 2.0
-            minor_axis = 1.0
-
-            # obstacle padding
-            obstacle_padding = 0.25
-
-            # distance of the state from the center of the obstacle
-            distance = jnp.linalg.norm(state[:2] - obstacle_center) - obstacle_padding
-            # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
-            return distance - (major_axis * minor_axis) / jnp.sqrt((minor_axis * jnp.cos(state[2]))**2 + (major_axis * jnp.sin(state[2]))**2)
-        
-    elif obstacle_type == "union":
-
-        def constraint_set(state):
-            """A real-valued function s.t. the zero-superlevel set is the safe set
-
-            Args:
-                state : An unbatched (!) state vector, an array of shape `(3,)` containing `[x, y, omega]`.
-
-            Returns:
-                A scalar, positive iff the state is in the safe set
-            """
-            # minkowski sum inflation
-            buffer = 0.110 # (distance in meters around obstacle)
-            
-            # square perimeter
-            bottom_left = jnp.array([0.1+buffer,0.1+buffer])
-            length = np.array([1.8-2*buffer,1.8-2*buffer])
-            
-            radius = 0.15
-            
-            ##circular obstacle
-            distance = jnp.sqrt((state[0] - 1)**2 + (state[1] - 1)**2) - buffer
-            
-            circle_constraint = distance - radius
-            
-            # circle
-            #constraint_set = circle_constraint
-            
-            # rectangle
-            #constraint_set = -jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length[0] - state[0], 
-            #                            state[1] - bottom_left[1], bottom_left[1] + length[1] - state[1]]))
-
-            perimeter_constraint = jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length[0] - state[0], 
-                                        state[1] - bottom_left[1], bottom_left[1] + length[1] - state[1]]))
-
-            constraint_set = jnp.min(jnp.array([circle_constraint, perimeter_constraint]))
-            
-            return constraint_set
-        
-    else: # if obstacle type is not supported yet
-        raise NotImplementedError("Obstacle type is not supported yet.")
-
-    return constraint_set

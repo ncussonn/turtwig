@@ -62,7 +62,7 @@ class NominalPolicy(Node):
             raise ValueError('Invalid input')
 
         # Load nominal policy table
-        self.nominal_policy_table = np.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_coarse_grid_with_bounding_box.npy')
+        self.nominal_policy_table = np.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid.npy')
 
         # Required to give an arbitrary dt to the dynamics object
         # TODO: rewrite dynamics object to not require this as a required argument
@@ -74,14 +74,14 @@ class NominalPolicy(Node):
         self.state_domain = hj.sets.Box(lo=jnp.array([0., 0., -jnp.pi]), hi=jnp.array([2., 2., jnp.pi]))
 
         # define grid resolution as a tuple
-        self.grid_resolution = (31, 31, 21)
+        self.grid_resolution = (61, 61, 61)
 
         # defining the state space grid
         self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=2)
 
         # initializing common parameters
-        self.state = np.array([0.25, 0.25, 0])  # initial state
-        self.real_state = np.array([0.25, 0.25, 0]) # initial real state
+        self.state = np.array([0.5, 0.5, 0])  # initial state
+        self.real_state = np.array([0.5, 0.5, 0]) # initial real state
         self.nominal_policy = np.array([0.1, 0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
 
         # quality of service profile for subscriber and publisher, provides buffer for messages
