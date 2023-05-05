@@ -19,7 +19,7 @@ import refine_cbfs
 from refine_cbfs.dynamics import HJControlAffineDynamics 
 import hj_reachability as hj
 import time
-from experiment_utils import *
+from config import *
 import logging
 
 data_filename = "/home/nate/turtwig_ws/log/experiment_data.txt"
@@ -50,49 +50,42 @@ class SafetyFilter(Node):
 
         '''Defining Node Attributes'''
 
+        self.use_simulation = USE_SIMULATION
+        self.use_vicon = USE_VICON
+        self.use_corr_control = USE_CORRECTIVE_CONTROLLER
+        self.use_nominal_policy = USE_UNFILTERED_POLICY
+        self.use_refineCBF = USE_REFINECBF
+
         safety_filter_node_config(self)
 
+        # define experiment parameters based on config file global variables
+        self.grid_resolution = GRID_RESOLUTION
+        self.state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER)
+        self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=PERIODIC_DIMENSIONS)
+
         # Required to give an arbitrary dt to the dynamics object
-        # TODO: rewrite dynamics object to not require this as a required argument
-        self.dyn = DiffDriveDynamics({"dt": 0.05}, test=False)
+        self.dyn = DYNAMICS
 
-        # Environment Parameters
-
-        # TODO: SHOULD GO IN CONFIG FILE
-        # defining the state_domain (upper and lower bounds of the state space)
-        self.state_domain = hj.sets.Box(lo=jnp.array([0., 0., -jnp.pi]), hi=jnp.array([2., 2., jnp.pi]))
-
-        # TODO: SHOULD GO IN CONFIG FILE
-        # define grid resolution as a tuple
-        self.grid_resolution = (61, 61, 61)
-
-        # TODO: SHOULD GO IN CONFIG FILE
-        # defining the state space grid
-        self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=2)
-      
         ''' Defining parameters for the CBF-QP Solver '''
 
         # Class K function alpha
         # lambda function: alpha, takes z (in this case the cbf) as an argument, and returns gamma times that argument
-        gamma = 0.25 # discount factor (this dictates how fast the system will approach the edge of the safe set)
-        self.alpha = lambda z: gamma * z
+        # gamma is the discount factor (this dictates how fast the system will approach the edge of the safe set)
+        self.alpha = lambda z: GAMMA * z
 
         # Control Space Constraints
-        self.vmin = 0.1      # minimum linear velocity of turtlebot3 burger
-        self.vmax = 0.21     # maximum linear velocity of turtlebot3 burger
-        self.wmax = 2.63     # maximum angular velocity of turtlebot3 burger
-    
-        self.umin = np.array([self.vmin, -self.wmax]) # 1x2 array that defines the minimum values the linear and angular velocity can take 
-        self.umax = np.array([self.vmax, self.wmax])  # same as above line but for maximum
+        self.umin = U_MIN  # 1x2 array that defines the minimum values the linear and angular velocity can take 
+        self.umax = U_MAX  # same as above line but for maximum
 
         # Active Set Invariance Filter (ASIF) With an initial CBF
         ###############################################
 
         # load the cbf (safety value function)
-        self.cbf = jnp.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomputed_cbf_2x2_61_61_61_grid.npy')               
-
+        # shouldn't need to load if just using the initial value function
+        self.cbf = jnp.load(CBF_FILENAME)               
+        
         # if bypassing the safety filter
-        if self.use_nom_policy is False:
+        if self.use_nominal_policy is False:
 
             if self.use_refineCBF == True:
                 # Use the initial value function to generate the tabular CBF for safety filter
@@ -228,7 +221,7 @@ class SafetyFilter(Node):
         print("Nominal Policy Shape: ", np.shape(self.nominal_policy))
 
        
-        if self.use_nom_policy is False:
+        if self.use_nominal_policy is False:
 
             # Use the Safety Filter
 
@@ -378,8 +371,8 @@ class SafetyFilter(Node):
 def main():
 
     settings = None
-    if os.name != 'nt':
-        settings = termios.tcgetattr(sys.stdin)
+    # if os.name != 'nt':
+    #     settings = termios.tcgetattr(sys.stdin)
 
     rclpy.init()    
     safety_filter = SafetyFilter()

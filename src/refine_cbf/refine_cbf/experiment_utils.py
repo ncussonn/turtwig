@@ -42,6 +42,7 @@ class DiffDriveDynamics(ControlAffineDynamics):
 
     # class method: accepts numpy array of state and float time
     def disturbance_jacobian(self, state, time=0.0):
+        # C matrix
         # returns an array of zeros equal to the dimension of the state
         return np.repeat(np.zeros_like(state)[..., None], 1, axis=-1)
     
@@ -270,53 +271,70 @@ class ParameterStorage:
 # safety filter node configuration
 def safety_filter_node_config(self):
 
-    # Prompt user for configuration
-    print('Please select an experiment configuration based on the following series of prompts:')
-
-    # using simulation or real turtlebot3 burger state feedback
-    input_sim = input('Use simulation? (y/n): ')
-
-    if input_sim == 'y':
-        self.use_simulation = True
-        self.use_corr_control = False
-
-    elif input_sim == 'n':
-        # use corrective control or not
-        input_corr = input('Use corrective control? (y/n): ')
-        self.use_simulation = False
-
-        if input_corr == 'y':
-            self.use_corr_control = True
-        elif input_corr == 'n':
-            self.use_corr_control = False
-        else:
-            raise ValueError('Invalid input')
-    else:
-        raise ValueError('Invalid input')
-
-    # use nominal policy or filtered policy
-    input_nom = input('Bypass safety filter? (y/n): ')
-
-    if input_nom == 'y':
-        self.use_nom_policy = True
-        self.use_refineCBF = False # prevent unused variable errors
-    elif input_nom == 'n':
-        self.use_nom_policy = False
-        
-        # using the refineCBF algorithm or a CBF
-        input_refine = input('Using refineCBF to iteratively evolve CBF? (y/n): ')
-
-        if input_refine == 'y':
-            self.use_refineCBF = True
-        elif input_refine == 'n':
-            self.use_refineCBF = False
-        else:
-            raise ValueError('Invalid input')
+    # check if config file variables are set correctly
+    if self.use_simulation != True and self.use_simulation != False:
+        raise ValueError('Invalid config.py parameter: use_simulation')
     
-    else:
-        raise ValueError('Invalid input')
+    if self.use_corr_control != True and self.use_corr_control != False:
+        raise ValueError('Invalid config.py parameter: use_corr_control')
+    
+    if self.use_simulation == self.use_vicon:
+        raise ValueError('Invalid config.py parameter: use_simulation and use_vicon cannot both be True or both be False')
 
+    if self.use_vicon != True and self.use_vicon != False:
+        raise ValueError('Invalid config.py parameter: use_vicon')
+    
+    if self.use_nominal_policy != True and self.use_nominal_policy != False:
+        raise ValueError('Invalid config.py parameter: use_nominal_policy')
+    
+    if self.use_refineCBF != True and self.use_refineCBF != False:
+        raise ValueError('Invalid config.py parameter: use_nominal_policy')
+    
+    # # Prompt user for configuration
+    # print('Please select an experiment configuration based on the following series of prompts:')
 
+    # # using simulation or real turtlebot3 burger state feedback
+    # input_sim = input('Use simulation? (y/n): ')
+
+    # if input_sim == 'y':
+    #     self.use_simulation = True
+    #     self.use_corr_control = False
+
+    # elif input_sim == 'n':
+    #     # use corrective control or not
+    #     input_corr = input('Use corrective control? (y/n): ')
+    #     self.use_simulation = False
+
+    #     if input_corr == 'y':
+    #         self.use_corr_control = True
+    #     elif input_corr == 'n':
+    #         self.use_corr_control = False
+    #     else:
+    #         raise ValueError('Invalid input')
+    # else:
+    #     raise ValueError('Invalid input')
+
+    # # use nominal policy or filtered policy
+    # input_nom = input('Bypass safety filter? (y/n): ')
+
+    # if input_nom == 'y':
+    #     self.use_nom_policy = True
+    #     self.use_refineCBF = False # prevent unused variable errors
+    # elif input_nom == 'n':
+    #     self.use_nom_policy = False
+        
+    #     # using the refineCBF algorithm or a CBF
+    #     input_refine = input('Using refineCBF to iteratively evolve CBF? (y/n): ')
+
+    #     if input_refine == 'y':
+    #         self.use_refineCBF = True
+    #     elif input_refine == 'n':
+    #         self.use_refineCBF = False
+    #     else:
+    #         raise ValueError('Invalid input')
+    
+    # else:
+    #     raise ValueError('Invalid input')
 
 # OBSTACLE TYPE
 

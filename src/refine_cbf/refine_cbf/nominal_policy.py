@@ -17,7 +17,7 @@ import refine_cbfs
 from refine_cbfs.dynamics import HJControlAffineDynamics 
 import hj_reachability as hj
 import time
-from experiment_utils import *
+from config import *
 import logging
 
 data_filename = "/home/nate/turtwig_ws/log/nom_policy_experiment_data.txt"
@@ -48,21 +48,23 @@ class NominalPolicy(Node):
 
         '''Defining Node Attributes'''
 
-        # Prompt user for configuration
-        print('Please select an experiment configuration based on the following series of prompts:')
+        # # Prompt user for configuration
+        # print('Please select an experiment configuration based on the following series of prompts:')
 
-        # using simulation or real turtlebot3 burger state feedback
-        input_sim = input('Use simulation? (y/n): ')
+        # # using simulation or real turtlebot3 burger state feedback
+        # input_sim = input('Use simulation? (y/n): ')
 
-        if input_sim == 'y':
-            self.use_simulation = True
-        elif input_sim == 'n':
-            self.use_simulation = False       
-        else:
-            raise ValueError('Invalid input')
+        # if input_sim == 'y':
+        #     self.use_simulation = True
+        # elif input_sim == 'n':
+        #     self.use_simulation = False       
+        # else:
+        #     raise ValueError('Invalid input')
+        
+        self.use_simulation = USE_SIMULATION
 
         # Load nominal policy table
-        self.nominal_policy_table = np.load('/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid.npy')
+        self.nominal_policy_table = np.load(NOMINAL_POLICY_FILENAME)
 
         # Required to give an arbitrary dt to the dynamics object
         # TODO: rewrite dynamics object to not require this as a required argument
@@ -227,8 +229,8 @@ class NominalPolicy(Node):
 def main():
 
     settings = None
-    if os.name != 'nt':
-        settings = termios.tcgetattr(sys.stdin)
+    # if os.name != 'nt':
+    #     settings = termios.tcgetattr(sys.stdin)
 
     rclpy.init()    
     nominal_policy = NominalPolicy()

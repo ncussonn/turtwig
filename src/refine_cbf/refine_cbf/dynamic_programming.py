@@ -27,8 +27,7 @@ import matplotlib.pyplot as plt
 
 class DynamicProgramming(Node):
 
-    # time horizon over which to compute the BRT
-    dt = 1 # time step
+    
 
     # # Control Space Constraints
     # vmin = 0.1      # minimum linear velocity of turtlebot3 burger
@@ -93,7 +92,8 @@ class DynamicProgramming(Node):
         
     def __init__(self):
 
-        # define experiment parameters based on config file global variables
+        # See config.py file for global variables definitions
+        # defining experiment parameters
         self.grid_resolution = GRID_RESOLUTION
         self.state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER)
         self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=PERIODIC_DIMENSIONS)
@@ -113,6 +113,8 @@ class DynamicProgramming(Node):
         self.brt_fct = lambda obstacle: (lambda t, x: jnp.minimum(x, obstacle))  # Backwards reachable TUBE!
         self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=self.brt_fct(self.obstacle))
         self.init_value = self.diffdrive_tabular_cbf.vf_table # initial CBF
+        # time horizon over which to compute the BRT
+        self.dt = TIME_STEP # time step for an HJ iteration 
 
         # DEBUG PLOT
         fig, ax = plt.subplots()
@@ -213,7 +215,7 @@ class DynamicProgramming(Node):
         self.internal_safe_set_publisher_.publish(msg)
         self.get_logger().info('Publishing: Safe Set Path (Internal)')
 
-    def publish_obstacle(self, vertices):
+    def publish_obstacles(self, vertices):
 
         # create a path message based on obstacle vertices
         msg = self.create_path_msg(vertices)
@@ -255,7 +257,7 @@ class DynamicProgramming(Node):
         # initiate figure
         fig, ax = plt.subplots(1, 1, figsize=(18,18 ))
 
-        # Initial contour plot of the 0 level set
+        # Initial contour plot of the 0 superlevel set
         safe_set_contour = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., -1], levels=[0], colors='k')
 
         # retrieve vertices of the contour for Rviz visualization
@@ -272,19 +274,20 @@ class DynamicProgramming(Node):
 
         counter = 0
 
+        # publish the initial safe set and obstacle
+        self.publish_initial_safe_set(self.initial_safe_set_vertices)
+        self.publish_obstacles(self.obst_vertices) 
+
         # infinite while loop, simulates infinite time horizon
         while iterate is True:
             
             counter += 1
 
-            # introduce a new obstacle at the third iteration
-            if counter == 3:
+            # introduce a new obstacle
+            if counter == 20:
 
                 # new dictionary of obstacles
-                obstacles = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15},"circle_2": {"center": np.array([1.5, 0.5]),"radius": 0.15}},
-                 "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
-                 "rectangle": {"rectange_1":{"center": np.array([0.5, 1.5]),"length": np.array([0.15,0.15])}},
-                 }
+                obstacles = OBSTACLES_2
 
                 # redifine the constraint set
                 self.constraint_set = define_constraint_set(obstacles, self.obst_padding)
@@ -297,7 +300,7 @@ class DynamicProgramming(Node):
                 # redefine the solver settings
                 self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=brt_fct(self.obstacle))
 
-            # compute new iteration of value function using the prior
+            # compute new iteration of value function, warmstarted using the prior
             self.cbf = hj.step(self.solver_settings, self.dyn_hjr, self.grid, time, self.cbf, target_time, progress_bar=True)
             time -= self.dt
             target_time -= self.dt
@@ -314,8 +317,7 @@ class DynamicProgramming(Node):
             self.safe_set_vertices = paths_safe_set[0].vertices
 
             # Publish contours as paths for Rviz visualization
-            self.publish_obstacle(self.obst_vertices)
-            self.publish_initial_safe_set(self.initial_safe_set_vertices)  
+            self.publish_obstacles(self.obst_vertices) 
             self.publish_safe_set(self.safe_set_vertices) 
 
             # in order to show the safe set contour which envelops an obstacle, we must extract the vertices of the second contour
@@ -325,11 +327,11 @@ class DynamicProgramming(Node):
                 internal_vertices = internal_path.vertices
                 self.publish_internal_safe_set(internal_vertices)
 
-            # to show internal obstacles contour, we must extract the vertices of the additional contours
-            if len(paths_obstacle) > 1:
-                internal_path = obst_contour.collections[0].get_paths()[1]
-                internal_vertices = internal_path.vertices
-                self.publish_internal_obstacle(internal_vertices)
+            # # to show internal obstacles contour, we must extract the vertices of the additional contours
+            # if len(paths_obstacle) > 1:
+            #     internal_path = obst_contour.collections[0].get_paths()[1]
+            #     internal_vertices = internal_path.vertices
+            #     self.publish_internal_obstacle(internal_vertices)
 
             # save the current cbf to a file
             jnp.save('./log/cbf.npy', self.cbf)
@@ -340,14 +342,14 @@ class DynamicProgramming(Node):
             # save the value function
             print("Saving value function...")
 
-            # prompt user if they want to generate another cbf
-            iterate = input("Generate another cbf? (y/n): ")
-            #iterate = 'y'
+            # # prompt user if they want to generate another cbf
+            # iterate = input("Generate another cbf? (y/n): ")
+            # #iterate = 'y'
 
-            if iterate == 'y':
-                iterate = True
-            else:
-                iterate = False
+            # if iterate == 'y':
+            #     iterate = True
+            # else:
+            #     iterate = False
 
         # show figure
         plt.show()
