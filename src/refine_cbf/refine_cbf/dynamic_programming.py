@@ -124,13 +124,21 @@ class DynamicProgramming(Node):
 
         super().__init__('dp_node')
         self.cbf_publisher_ = self.create_publisher(Bool, 'cbf_availability', 10)
-        self.obstacle_publisher_ = self.create_publisher(Path, 'obstacle', 10)
-        self.internal_obstacle_publisher_ = self.create_publisher(Path, 'obstacle_internal', 10)
-        self.safe_set_publisher_ = self.create_publisher(Path, 'safe_set', 10)
-        self.internal_safe_set_publisher_ = self.create_publisher(Path, 'safe_set_internal', 10)
+        self.obstacle_1_publisher_ = self.create_publisher(Path, 'obstacle_1', 10)
+        self.obstacle_2_publisher_ = self.create_publisher(Path, 'obstacle_2', 10)
+        self.obstacle_3_publisher_ = self.create_publisher(Path, 'obstacle_3', 10)
+        self.obstacle_4_publisher_ = self.create_publisher(Path, 'obstacle_4', 10)
+        self.obstacle_5_publisher_ = self.create_publisher(Path, 'obstacle_5', 10)
+        # self.internal_obstacle_publisher_ = self.create_publisher(Path, 'obstacle_internal', 10)
+        self.safe_set_1_publisher_ = self.create_publisher(Path, 'safe_set_1', 10)
+        self.safe_set_2_publisher_ = self.create_publisher(Path, 'safe_set_2', 10)
+        self.safe_set_3_publisher_ = self.create_publisher(Path, 'safe_set_3', 10)
+        self.safe_set_4_publisher_ = self.create_publisher(Path, 'safe_set_4', 10)
+        self.safe_set_5_publisher_ = self.create_publisher(Path, 'safe_set_5', 10)
+        # self.internal_safe_set_publisher_ = self.create_publisher(Path, 'safe_set_internal', 10)
         self.initial_safe_set_publisher_ = self.create_publisher(Path, 'initial_safe_set', 10)
 
-        timer_period = 0.001  # time inbetween callbacks in seconds
+        timer_period = 0.001  # delay between starting iterations [seconds]
 
         self.timer = self.create_timer(timer_period, self.timer_callback) # calls the timer_callback function every timer_period
         self.cbf_available = False
@@ -197,14 +205,36 @@ class DynamicProgramming(Node):
             self.get_logger().info('Publishing: "%s"' % msg.data)
             self.cbf_available = False
     
-    def publish_safe_set(self, vertices):
+    def publish_safe_set(self, paths):
 
-        # create a path message based on the current safe set vertices
-        msg = self.create_path_msg(vertices)    
+        # # create a path message based on the current safe set vertices
+        # msg = self.create_path_msg(vertices)    
 
-        # publish the message
-        self.safe_set_publisher_.publish(msg)
-        self.get_logger().info('Publishing: Safe Set Path')
+        # Only supports up to 5 holes in the safe set
+        for i in range(len(paths)):
+
+            path = paths[i]
+            vertices = path.vertices
+            msg = self.create_path_msg(vertices)
+
+            if i == 0:
+                self.safe_set_1_publisher_.publish(msg)
+            elif i == 1:
+                self.safe_set_2_publisher_.publish(msg)
+            elif i == 2:
+                self.safe_set_3_publisher_.publish(msg)
+            elif i == 3:
+                self.safe_set_4_publisher_.publish(msg)
+            elif i == 4:
+                self.safe_set_5_publisher_.publish(msg)
+            else:
+                self.get_logger().info('Disjoint Obstacle Limit Reached. Unable to visualize all safe set holes.')
+
+            self.get_logger().info('Publishing: Safe Set Path')
+
+        # # publish the message
+        # self.safe_set_publisher_.publish(msg)
+        # self.get_logger().info('Publishing: Safe Set Path')
 
     def publish_internal_safe_set(self, vertices):
 
@@ -215,14 +245,55 @@ class DynamicProgramming(Node):
         self.internal_safe_set_publisher_.publish(msg)
         self.get_logger().info('Publishing: Safe Set Path (Internal)')
 
-    def publish_obstacles(self, vertices):
+    def publish_obstacles(self, paths):
+     
+        # clear the unused obstacle publishers if there are any
 
-        # create a path message based on obstacle vertices
+        # create an empty path message
+        vertices = []
         msg = self.create_path_msg(vertices)
 
+        for i in range(5, len(paths)-1, -1):
+            print(i)
+
+            if i == 0:
+                self.obstacle_1_publisher_.publish(msg)
+            elif i == 1:
+                self.obstacle_2_publisher_.publish(msg)
+            elif i == 2:
+                self.obstacle_3_publisher_.publish(msg)
+            elif i == 3:
+                self.obstacle_4_publisher_.publish(msg)
+            elif i == 4:
+                self.obstacle_5_publisher_.publish(msg)
+
+        # publish the obstacle paths
+        # Only supports up to 5 disjoint obstacles
+        for i in range(len(paths)):
+            print(i)
+
+            path = paths[i]
+            vertices = path.vertices
+            msg = self.create_path_msg(vertices)
+
+            if i == 0:
+                self.obstacle_1_publisher_.publish(msg)
+            elif i == 1:
+                self.obstacle_2_publisher_.publish(msg)
+            elif i == 2:
+                self.obstacle_3_publisher_.publish(msg)
+            elif i == 3:
+                self.obstacle_4_publisher_.publish(msg)
+            elif i == 4:
+                self.obstacle_5_publisher_.publish(msg)
+            else:
+                self.get_logger().info('Disjoint Obstacle Limit Reached. Unable to visualize all obstacles.')
+
+            self.get_logger().info('Publishing: Obstacle Path')
+
         # publish the message
-        self.obstacle_publisher_.publish(msg)
-        self.get_logger().info('Publishing: Obstacle Path')
+        # self.obstacle_publisher_.publish(msg)
+        # self.get_logger().info('Publishing: Obstacle Path')
 
     def publish_internal_obstacle(self, vertices):
 
@@ -274,9 +345,11 @@ class DynamicProgramming(Node):
 
         counter = 0
 
-        # publish the initial safe set and obstacle
+        # # publish the initial safe set and obstacle
         self.publish_initial_safe_set(self.initial_safe_set_vertices)
-        self.publish_obstacles(self.obst_vertices) 
+        # self.publish_obstacles(self.obst_vertices) 
+
+        self.publish_obstacles(obst_contour.collections[0].get_paths()) 
 
         # infinite while loop, simulates infinite time horizon
         while iterate is True:
@@ -284,7 +357,7 @@ class DynamicProgramming(Node):
             counter += 1
 
             # introduce a new obstacle
-            if counter == 20:
+            if counter == 50:
 
                 # new dictionary of obstacles
                 obstacles = OBSTACLES_2
@@ -308,24 +381,26 @@ class DynamicProgramming(Node):
             # plot the contour of the 0 level set of the cbf (the safe set) at particular theta slice
             theta_slice = 11
             safe_set_contour = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., theta_slice], levels=[0], colors='k')   
+            # create contour of obstacle
+            obst_contour = ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.obstacle[..., 0], levels=[0], colors='r')
 
             # contour paths
-            paths_safe_set = safe_set_contour.collections[0].get_paths()
-            paths_obstacle = obst_contour.collections[0].get_paths()
+            safe_set_paths = safe_set_contour.collections[0].get_paths()
+            obstacle_paths = obst_contour.collections[0].get_paths()
 
             # obtain vertices of the contour for Rviz visualization
-            self.safe_set_vertices = paths_safe_set[0].vertices
+            self.safe_set_vertices = safe_set_paths[0].vertices
 
             # Publish contours as paths for Rviz visualization
-            self.publish_obstacles(self.obst_vertices) 
-            self.publish_safe_set(self.safe_set_vertices) 
+            self.publish_obstacles(obstacle_paths) 
+            self.publish_safe_set(safe_set_paths) 
 
             # in order to show the safe set contour which envelops an obstacle, we must extract the vertices of the second contour
             # the length of the paths list will exceed 1 if the safe set contour envelops an obstacle
-            if len(paths_safe_set) > 1:
-                internal_path = safe_set_contour.collections[0].get_paths()[1]
-                internal_vertices = internal_path.vertices
-                self.publish_internal_safe_set(internal_vertices)
+            # if len(paths_safe_set) > 1:
+            #     internal_path = safe_set_contour.collections[0].get_paths()[1]
+            #     internal_vertices = internal_path.vertices
+            #     self.publish_internal_safe_set(internal_vertices)
 
             # # to show internal obstacles contour, we must extract the vertices of the additional contours
             # if len(paths_obstacle) > 1:

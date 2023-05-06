@@ -98,14 +98,16 @@ CBF_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomput
 
 ## CONSTRAINT SET / OBSTACLES
 
+#NOTE: Package can currently only handle up to 5 disjoint obstacles
+
 # a dictionary of obstacles with the key being the obstacle type and the value being a dictionary of obstacle parameters
 OBSTACLES = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15}},
                  "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
+                 "rectangle": {"rectange_1":{"center": np.array([1.5, 1.5]),"length": np.array([0.33,0.33])}},
                  }
 
-OBSTACLES_2 = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15},"circle_2": {"center": np.array([0.5, 1.5]),"radius": 0.15}},
+OBSTACLES_2 = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15}},
                  "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
-                 "rectangle": {"rectange_1":{"center": np.array([1.5, 0.5]),"length": np.array([0.33,0.33])}},
                  }
 
 # padding around the obstacle
