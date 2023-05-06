@@ -207,8 +207,22 @@ class DynamicProgramming(Node):
     
     def publish_safe_set(self, paths):
 
-        # # create a path message based on the current safe set vertices
-        # msg = self.create_path_msg(vertices)    
+        # create an empty path message
+        vertices = []
+        msg = self.create_path_msg(vertices)
+
+        for i in range(5, len(paths)-1, -1):
+            
+            if i == 0:
+                self.safe_set_1_publisher_.publish(msg)
+            elif i == 1:
+                self.safe_set_2_publisher_.publish(msg)
+            elif i == 2:
+                self.safe_set_3_publisher_.publish(msg)
+            elif i == 3:
+                self.safe_set_4_publisher_.publish(msg)
+            elif i == 4:
+                self.safe_set_5_publisher_.publish(msg)  
 
         # Only supports up to 5 holes in the safe set
         for i in range(len(paths)):
