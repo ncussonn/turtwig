@@ -100,8 +100,8 @@ class SafetyFilter(Node):
         self.diffdrive_asif = ControlAffineASIF(self.dyn, self.tabular_cbf, alpha=self.alpha, umin=self.umin, umax=self.umax)
 
         # State and Control Variables to prevent unused variable errors
-        self.state = np.array([0.25, 0.25, 0])  # initial state
-        self.real_state = np.array([0.25, 0.25, 0])  # initial state
+        self.state = INITIAL_STATE
+        self.real_state = INITIAL_STATE
         self.nominal_policy = np.array([0.1, 0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
         self.corrective_control = np.array([0, 0]) # initial corrective control
 
@@ -218,9 +218,8 @@ class SafetyFilter(Node):
         ############################################
 
         # DEBUG: Print the shape and type of the nominal policy for verification
-        print("Nominal Policy Shape: ", np.shape(self.nominal_policy))
+        #print("Nominal Policy Shape: ", np.shape(self.nominal_policy))
 
-       
         if self.use_nominal_policy is False:
 
             # Use the Safety Filter
@@ -294,8 +293,6 @@ class SafetyFilter(Node):
             
             # Halt the robot to prevent unsafe behavior while the CBF is updated
             self.get_logger().info('New CBF received, stopping robot and loading new CBF')
-
-            # TODO: Figure out how to stop the robot in subscription callback function
 
             # load new tabular cbf
             self.cbf = jnp.load('./log/cbf.npy')

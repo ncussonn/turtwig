@@ -14,8 +14,9 @@ import math
 # class for the dynamics of the differential drive robot
 # inheritance: ControlAffineDynamics class from the cbf_opt package
 class DiffDriveDynamics(ControlAffineDynamics):
-    STATES   = ['X', 'Y', 'THETA'] # state vector of f(x,u): x
-    CONTROLS = ['VEL', 'OMEGA']    # control vector of f(x,u): u
+    STATES   = ['X', 'Y', 'THETA'] # state vector of f(x,u,d): x
+    CONTROLS = ['VEL', 'OMEGA']    # control vector of f(x,u,d): u
+    DISTURBANCE = ['D']            # disturbance vector of f(x,u,d): d
     
     # parameterized constructor: dictionary object params, bool test, **kwargs
     # **kwargs allows a variable number of keyword arguments to be passed to a Python function
@@ -27,7 +28,7 @@ class DiffDriveDynamics(ControlAffineDynamics):
 
     # class method: accepts a numpy array state and float time
     def open_loop_dynamics(self, state, time=0.0):
-        return np.zeros_like(state) # returns an array of zeros with the same shape and type as a given array
+        return np.zeros_like(state) # f(x) returns an array of zeros with the same shape and type as a given array
 
     # class method: accepts numpy array state and float time
     def control_matrix(self, state, time=0.0):
@@ -38,13 +39,16 @@ class DiffDriveDynamics(ControlAffineDynamics):
         B[..., 0, 0] = np.cos(state[..., 2])
         B[..., 1, 0] = np.sin(state[..., 2])
         B[..., 2, 1] = 1
-        return B # returns the control matrix B from f(x,u) = f(x) + Bu
+        return B # returns the control matrix B from f(x,u,d) = f(x) + Bu + Cd
 
     # class method: accepts numpy array of state and float time
     def disturbance_jacobian(self, state, time=0.0):
         # C matrix
-        # returns an array of zeros equal to the dimension of the state
-        return np.repeat(np.zeros_like(state)[..., None], 1, axis=-1)
+        C = np.repeat(np.zeros_like(state)[..., None], self.disturbance_dims, axis=-1)
+        C[..., 0, 0] = 1
+        return C # returns the disturbance matrix C from f(x,u,d) = f(x) + Bu + Cd
+        # # returns an array of zeros equal to the dimension of the state
+        # return np.repeat(np.zeros_like(state)[..., None], 1, axis=-1)
     
     # class method: accepts numpy arrays state & control, and float time
     def state_jacobian(self, state, control, time=0.0):
@@ -503,3 +507,4 @@ def define_constraint_set(obstacles, padding):
         return jnp.min(numpy_array_of_constraints)
         
     return constraint_set
+

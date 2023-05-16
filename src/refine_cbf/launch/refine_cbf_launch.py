@@ -16,5 +16,9 @@ def generate_launch_description():
         Node(
             package='refine_cbf',
             executable='dynamic_programming',
-        )
+        ),
+        Node(
+            package='refine_cbf',
+            executable='refine_cbf_visualization',
+        ),
     ])

@@ -191,7 +191,7 @@ class NominalPolicy(Node):
     def state_sub_callback(self, msg):
 
         # Message to terminal
-        self.get_logger().info('Received new simulation tate.')
+        self.get_logger().info('Received new simulation state.')
 
         # convert quaternion to euler angle
         (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)

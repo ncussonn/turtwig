@@ -32,8 +32,14 @@ USE_CORRECTIVE_CONTROLLER = False
 # Refine the CBF: True or False
 USE_REFINECBF = True
 
-# Refine CBF Iteration Time Step
+# Refine CBF Iteration Time Step (dt)
 TIME_STEP = 0.25
+
+# Theta Slice (for 2D visualization)
+THETA_SLICE = 41
+
+# Initial State
+INITIAL_STATE = np.array([0.5, 0.5, np.pi/2])
 
 ## NOMINAL POLICY
 
@@ -69,6 +75,16 @@ PERIODIC_DIMENSIONS = 2
 U_MIN = np.array([0.1, -2.63])
 U_MAX = np.array([0.21, 2.63])
 
+## DISTURBANCE SPACE
+
+# Disturbance space parameters
+# two arrays with size of the disturbance space dimension that define the lower and upper bounds of the disturbance space
+# For instance, a differential drive dynamics robot will have a 2D disturbance space (v_disturbance, omega_disturbance) and if
+# using a Turtlebot3 Burger, the disturbance space will be bounded by v_disturbance_min = -0.1, v_disturbance_max = 0.1, omega_disturbance_max/omega_disturbance_min = +/- 0.1
+
+W_MIN = np.array([-0.1, -0.1])
+W_MAX = np.array([0.1, 0.1])
+
 ## DYNAMICS
 
 DYNAMICS = DiffDriveDynamics({"dt": 0.05}, test=False)  # dt is an arbitrary value choice, as the dynamics object requires a dt 
@@ -78,6 +94,8 @@ DYNAMICS_JAX_NUMPY = DiffDriveJNPDynamics({"dt": 0.05}, test=False) # dt is an a
                                                                     # value for its constructor argument but it is not used for this package
 
 DYNAMICS_HAMILTON_JACOBI_REACHABILITY = HJControlAffineDynamics(DYNAMICS_JAX_NUMPY, control_space=hj.sets.Box(jnp.array(U_MIN), jnp.array(U_MAX)))
+
+DYNAMICS_HAMILTON_JACOBI_REACHABILITY_WITH_DISTURBANCE = HJControlAffineDynamics(DYNAMICS_JAX_NUMPY, control_space=hj.sets.Box(jnp.array(U_MIN), jnp.array(U_MAX)), disturbance_space=hj.sets.Box(jnp.array(W_MIN), jnp.array(W_MAX)))
 
 ## CONTROL BARRIER FUNCTION (CBF)
 
@@ -101,12 +119,16 @@ CBF_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomput
 #NOTE: Package can currently only handle up to 5 disjoint obstacles
 
 # a dictionary of obstacles with the key being the obstacle type and the value being a dictionary of obstacle parameters
-OBSTACLES = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15}},
-                 "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
-                 "rectangle": {"rectange_1":{"center": np.array([1.5, 1.5]),"length": np.array([0.33,0.33])}},
-                 }
+OBSTACLES = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15},
+                         "circle_2":{"center": np.array([0.5, 1.5]), "radius": 0.15},
+                         "circle_3":{"center": np.array([1.5, 0.5]), "radius": 0.15}},
+             "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
+             "rectangle": {"rectange_1":{"center": np.array([1.5, 1.5]),"length": np.array([0.33,0.33])}},
+            }
 
-OBSTACLES_2 = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15}},
+OBSTACLES_2 = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15},
+                         "circle_2":{"center": np.array([0.5, 1.5]), "radius": 0.15},
+                         "circle_3":{"center": np.array([1.5, 0.5]), "radius": 0.15}},
                  "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
                  }
 
@@ -150,3 +172,12 @@ OBSTACLE_PADDING = 0.11
 
 # else: # if dynamic model is not supported yet
 #     raise NotImplementedError("Only differential drive dynamics and Dubin's car are currently supported")
+
+
+state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
+grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(state_domain, GRID_RESOLUTION, periodic_dims=PERIODIC_DIMENSIONS)
+diffdrive_cbf = CBF # instatiate a diffdrive_cbf object with the Differential Drive dynamics object
+diffdrive_cbf = DiffDriveCBF(DYNAMICS, {"center": CENTER_CBF, "r": RADIUS_CBF, "scalar": SCALAR}, test=False) # instatiate a diffdrive_cbf object with the Differential Drive dynamics object
+diffdrive_tabular_cbf = refine_cbfs.TabularControlAffineCBF(DYNAMICS, dict(), grid=grid) # tabularize the cbf so that value can be calculated at each grid point
+diffdrive_tabular_cbf.tabularize_cbf(diffdrive_cbf) # tabularize the cbf so that value can be calculated at each grid point
+INITIAL_CBF = diffdrive_tabular_cbf.vf_table # initial CBF

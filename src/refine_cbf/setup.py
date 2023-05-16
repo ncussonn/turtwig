@@ -28,7 +28,8 @@ setup(
             'dynamic_programming = refine_cbf.dynamic_programming:main',
             'diff_drive = refine_cbf.differential_drive:main',
             'nominal_policy = refine_cbf.nominal_policy:main',
-            'low_level_control = refine_cbf.low_level_controller:main',	
+            'low_level_control = refine_cbf.low_level_controller:main',
+            'refine_cbf_visualization = refine_cbf.refine_cbf_visualization:main',	
         ],
     },
 )
