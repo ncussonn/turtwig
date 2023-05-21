@@ -508,3 +508,19 @@ def define_constraint_set(obstacles, padding):
         
     return constraint_set
 
+
+def save_float_to_file(data, filename):
+    first_call = False
+    
+    try:
+        with open(filename, 'r') as file:
+            first_call = file.read() == ''
+    except FileNotFoundError:
+        first_call = True
+    
+    mode = 'w' if first_call else 'a'
+    
+    with open(filename, mode) as file:
+        file.write(str(data) + '\n')
+
+

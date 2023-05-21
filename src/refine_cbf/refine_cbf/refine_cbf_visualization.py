@@ -35,7 +35,6 @@ class RefineCBF_Visualization(Node):
         self.state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
         self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=PERIODIC_DIMENSIONS) # defining the grid object for hj reachability
         self.obst_padding = OBSTACLE_PADDING # Minkowski sum for padding
-        self.obstacles = OBSTACLES # initial obstacles for the experiment from config.py file
         self.constraint_set = define_constraint_set(OBSTACLES, OBSTACLE_PADDING) # defining the constraint set l(x) terminal cost
         self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states) # defining the obstacle for the Hamilton Jacobi Reachability package
 
@@ -95,6 +94,9 @@ class RefineCBF_Visualization(Node):
 
             # load new tabular cbf
             self.cbf = jnp.load('./log/cbf.npy')
+
+            # increment the counter
+            self.counter+=1
 
     def generate_pose_stamp(self, vertex, time_stamp):
 
@@ -250,6 +252,11 @@ class RefineCBF_Visualization(Node):
             self.initial_safe_set_vertices = safe_set_contour.collections[0].get_paths()[0].vertices # retrieve vertices of the contour for Rviz visualization
             self.publish_initial_safe_set(self.initial_safe_set_vertices)   # publish the vertices as a path message
         
+        if self.counter == NEW_OBSTACLE_ITERATION:
+            # update the obstacle set
+            self.constraint_set = define_constraint_set(OBSTACLES_2, OBSTACLE_PADDING)
+            self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
+
         # publish obstacle contours as a path message
         self.obst_contour = self.ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.obstacle[..., 0], levels=[0], colors='r')
         obstacle_paths = self.obst_contour.collections[0].get_paths()
@@ -271,8 +278,6 @@ class RefineCBF_Visualization(Node):
         safe_set_paths = safe_set_contour.collections[0].get_paths()
         self.publish_safe_set(safe_set_paths)
 
-        self.counter += 1
-  
     # Simulation State Subscription
     def state_sub_callback(self, msg):
 

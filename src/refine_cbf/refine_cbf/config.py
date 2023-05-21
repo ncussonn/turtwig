@@ -7,14 +7,6 @@ from refine_cbfs.dynamics import HJControlAffineDynamics
 from cbf_opt import ControlAffineDynamics, ControlAffineCBF
 from experiment_utils import *
 
-# LIST OF PARAMETERS SOMEONE MIGHT WANT TO CHANGE
-# 1. HJ Grid
-# 2. Constraint set / Obstacles
-# 3. Dynamic Model
-# 4. Control Space Parameters
-# 5. Disturbance Space
-# 6. Initial CBF
-
 ## EXPERIMENT PARAMETERS
 
 # Use simulation for state feedback: True or False (only can be True if USE_VICON is False)
@@ -100,7 +92,7 @@ DYNAMICS_HAMILTON_JACOBI_REACHABILITY_WITH_DISTURBANCE = HJControlAffineDynamics
 ## CONTROL BARRIER FUNCTION (CBF)
 
 # Gamma value / discount rate for the CBVF
-GAMMA = 0.25
+GAMMA = 0.15
 
 # Scalar multiplier for the CBF
 SCALAR = 1.0
@@ -116,21 +108,40 @@ CBF_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomput
 
 ## CONSTRAINT SET / OBSTACLES
 
-#NOTE: Package can currently only handle up to 5 disjoint obstacles
+#NOTE: Package can currently only handle up to 5 DISJOINT obstacles and 1 update to the obstacles
 
 # a dictionary of obstacles with the key being the obstacle type and the value being a dictionary of obstacle parameters
-OBSTACLES = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15},
-                         "circle_2":{"center": np.array([0.5, 1.5]), "radius": 0.15},
-                         "circle_3":{"center": np.array([1.5, 0.5]), "radius": 0.15}},
-             "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
-             "rectangle": {"rectange_1":{"center": np.array([1.5, 1.5]),"length": np.array([0.33,0.33])}},
-            }
+OBSTACLES = {
+    # "circle": {
+    #     "circle_1": {"center": np.array([0.5, 1.5]), "radius": 0.15},
+    #     "circle_2": {"center": np.array([1.5, 0.5]), "radius": 0.15},
+    # },
+    "rectangle": {
+        "rectangle_1": {"center": np.array([1.6, 1.0]), "length": np.array([0.6, 0.5])},
+        "rectangle_2": {"center": np.array([0.4, 1.0]), "length": np.array([0.6, 0.5])},
+    },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
 
-OBSTACLES_2 = {"circle": {"circle_1":{"center": np.array([1.0, 1.0]), "radius": 0.15},
-                         "circle_2":{"center": np.array([0.5, 1.5]), "radius": 0.15},
-                         "circle_3":{"center": np.array([1.5, 0.5]), "radius": 0.15}},
-                 "bounding_box": {"bounding_box_1":{"center": np.array([1.0, 1.0]),"length": np.array([2.0,2.0])}},
-                 }
+# introduces the below obstacle dictionary into the environment at the given iteration
+NEW_OBSTACLE_ITERATION = 20
+
+OBSTACLES_2 = {
+    # "circle": {
+    #     "circle_1": {"center": np.array([1.0, 1.0]), "radius": 0.15},
+    #     "circle_2": {"center": np.array([0.5, 1.5]), "radius": 0.15},
+    #     "circle_3": {"center": np.array([1.5, 0.5]), "radius": 0.15},
+    # },
+    "rectangle": {
+        "rectangle_1": {"center": np.array([1.6, 1.0]), "length": np.array([0.6, 0.1])},
+        "rectangle_2": {"center": np.array([0.4, 1.0]), "length": np.array([0.6, 0.1])},
+    },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
 
 # padding around the obstacle
 # float that inflates the obstacles by a certain amount using Minkoswki sum
