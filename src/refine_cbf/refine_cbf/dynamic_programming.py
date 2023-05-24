@@ -24,6 +24,9 @@ class DynamicProgramming(Node):
         
     def __init__(self):
 
+        # name of node for ROS2
+        super().__init__('refine_cbf')
+
         # See config.py file for global variables definitions
         # defining experiment parameters
         self.grid_resolution = GRID_RESOLUTION # grid resolution for hj reachability
@@ -54,7 +57,7 @@ class DynamicProgramming(Node):
         ax.contourf(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.diffdrive_tabular_cbf.vf_table[..., 0])
         cbar = fig.colorbar(ax.contourf(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.diffdrive_tabular_cbf.vf_table[..., 0]))
 
-        super().__init__('dp_node')
+        
         self.cbf_publisher_ = self.create_publisher(Bool, 'cbf_availability', 10)
         
         timer_period = 0.001  # delay between starting iterations [seconds]
@@ -128,7 +131,7 @@ class DynamicProgramming(Node):
         print("Time to take a step: ", end_time - start_time)
 
         save_float_to_file(end_time - start_time, './log/time_to_take_a_step.txt')
-        
+
         self.time -= self.dt
         self.target_time -= self.dt        
 

@@ -9,17 +9,29 @@ from experiment_utils import *
 
 ## EXPERIMENT PARAMETERS
 
-# Use simulation for state feedback: True or False (only can be True if USE_VICON is False)
-USE_SIMULATION = True
+# State Feedback Topic Name (Gazebo: 'gazebo/odom', Turtlebot3: 'odom', VICON: '/vicon/turtlebot/turtlebot')
+STATE_FEEDBACK_TOPIC = 'gazebo/odom'
 
-# Use VICON for state feedback: True or False (only can be True if USE_SIMULATION is False)
-USE_VICON = False
+# # Use Gazebo simulation for state feedback: True or False (only can be True if USE_VICON is False)
+# USE_SIMULATION = True
 
-# Use unfiltered policy: True or False
+# # Use Turtlebot3 Odometry for state feedback: True or False (only can be True if USE_SIMULATION is False)
+# USE_TB3_ODOMETRY = False
+
+# # Use VICON arena / aerodrome for state feedback: True or False (only can be True if USE_SIMULATION is False)
+# USE_VICON = False
+
+# Use unfiltered policy (i.e. only nominal/safety agnostic control applied): True or False
+# used in the refine_cbf_launch.py and nominal_policy.py
+# If True, this will publish the /cmd_vel topic straight from the nominal policy node instead of the safety filter node
 USE_UNFILTERED_POLICY = False
 
+# Use a manually controller for the nominal policy: True or False
+USE_MANUAL_CONTROLLER = False
+
+# TODO: Add low-level corrective controller functionality
 # Use corrective controller: True or False
-USE_CORRECTIVE_CONTROLLER = False
+# USE_CORRECTIVE_CONTROLLER = False
 
 # Refine the CBF: True or False
 USE_REFINECBF = True
@@ -33,7 +45,7 @@ THETA_SLICE = 41
 # Initial State
 INITIAL_STATE = np.array([0.5, 0.5, np.pi/2])
 
-## NOMINAL POLICY
+## NOMINAL POLICY TABLE
 
 NOMINAL_POLICY_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid.npy'
 
@@ -79,6 +91,7 @@ W_MAX = np.array([0.1, 0.1])
 
 ## DYNAMICS
 
+# TODO: Allow dynamics to be changed by keyword argument instead of direct assignment, such as "diff_drive", "dubins_car", etc.
 DYNAMICS = DiffDriveDynamics({"dt": 0.05}, test=False)  # dt is an arbitrary value choice, as the dynamics object requires a dt 
                                                         # value for its constructor argument but it is not used for this package
 
@@ -92,7 +105,7 @@ DYNAMICS_HAMILTON_JACOBI_REACHABILITY_WITH_DISTURBANCE = HJControlAffineDynamics
 ## CONTROL BARRIER FUNCTION (CBF)
 
 # Gamma value / discount rate for the CBVF
-GAMMA = 0.15
+GAMMA = 0.5
 
 # Scalar multiplier for the CBF
 SCALAR = 1.0
@@ -113,37 +126,87 @@ CBF_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomput
 # a dictionary of obstacles with the key being the obstacle type and the value being a dictionary of obstacle parameters
 OBSTACLES = {
     # "circle": {
-    #     "circle_1": {"center": np.array([0.5, 1.5]), "radius": 0.15},
-    #     "circle_2": {"center": np.array([1.5, 0.5]), "radius": 0.15},
+    #     "circle_1": {"center": np.array([1.5, 0.5]), "radius": 0.5},
+    #     "circle_2": {"center": np.array([1.5, 1.5]), "radius": 0.5},
+    #     # "circle_3": {"center": np.array([0.5, 1.0]), "radius": 0.25},
+    #     # "circle_4": {"center": np.array([2.0, 1.0]), "radius": 0.25},
+    #     # "circle_5": {"center": np.array([0.0, 1.0]), "radius": 0.25},
     # },
-    "rectangle": {
-        "rectangle_1": {"center": np.array([1.6, 1.0]), "length": np.array([0.6, 0.5])},
-        "rectangle_2": {"center": np.array([0.4, 1.0]), "length": np.array([0.6, 0.5])},
-    },
+    # "rectangle": {
+    #     "rectangle_1": {"center": np.array([1.0, 1.0]), "length": np.array([0.5, 0.5])},
+    #     "rectangle_2": {"center": np.array([1.0, 1.5]), "length": np.array([0.25, 0.5])},
+    # },
     "bounding_box": {
-        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+        "bounding_box_1": {"center": np.array([0.5, 1.0]), "length": np.array([1.0, 2.0])},
     },
 }
 
 # introduces the below obstacle dictionary into the environment at the given iteration
-NEW_OBSTACLE_ITERATION = 20
+NEW_OBSTACLE_ITERATION = 10
 
 OBSTACLES_2 = {
-    # "circle": {
-    #     "circle_1": {"center": np.array([1.0, 1.0]), "radius": 0.15},
-    #     "circle_2": {"center": np.array([0.5, 1.5]), "radius": 0.15},
-    #     "circle_3": {"center": np.array([1.5, 0.5]), "radius": 0.15},
-    # },
-    "rectangle": {
-        "rectangle_1": {"center": np.array([1.6, 1.0]), "length": np.array([0.6, 0.1])},
-        "rectangle_2": {"center": np.array([0.4, 1.0]), "length": np.array([0.6, 0.1])},
+    "circle": {
+        "circle_1": {"center": np.array([1.0, 0.0]), "radius": 0.5},
+        "circle_2": {"center": np.array([1.0, 2.0]), "radius": 0.5},
     },
+    # "rectangle": {
+    #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
+    #     "rectangle_2": {"center": np.array([1.0, 1.66]), "length": np.array([0.25, 0.66])},
+    # },
     "bounding_box": {
         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
     },
 }
 
-# padding around the obstacle
+OBSTACLE_3_ITERATION = 20
+
+OBSTACLES_3 = {
+    "circle": {
+        "circle_1": {"center": np.array([1.0, 0.0]), "radius": 0.5},
+        "circle_2": {"center": np.array([1.0, 2.0]), "radius": 0.5},
+    },
+    # "rectangle": {
+    #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
+    #     "rectangle_2": {"center": np.array([1.0, 1.66]), "length": np.array([0.25, 0.66])},
+    # },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
+
+OBSTACLE_4_ITERATION = 30
+
+OBSTACLES_4 = {
+    "circle": {
+        "circle_1": {"center": np.array([1.0, 0.0]), "radius": 0.5},
+        "circle_2": {"center": np.array([1.0, 2.0]), "radius": 0.5},
+    },
+    # "rectangle": {
+    #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
+    #     "rectangle_2": {"center": np.array([1.0, 1.66]), "length": np.array([0.25, 0.66])},
+    # },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
+
+OBSTACLE_5_ITERATION = 40
+
+OBSTACLES_5 = {
+    "circle": {
+        "circle_1": {"center": np.array([1.0, 0.0]), "radius": 0.5},
+        "circle_2": {"center": np.array([1.0, 2.0]), "radius": 0.5},
+    },
+    # "rectangle": {
+    #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
+    #     "rectangle_2": {"center": np.array([1.0, 1.66]), "length": np.array([0.25, 0.66])},
+    # },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
+
+# padding around the obstacle in meters
 # float that inflates the obstacles by a certain amount using Minkoswki sum
 # For example, if the maximum radius of a robot is 0.15 m, the padding should be at least 0.15 m
 OBSTACLE_PADDING = 0.11
@@ -184,7 +247,7 @@ OBSTACLE_PADDING = 0.11
 # else: # if dynamic model is not supported yet
 #     raise NotImplementedError("Only differential drive dynamics and Dubin's car are currently supported")
 
-
+# Creating the Initial CBF
 state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
 grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(state_domain, GRID_RESOLUTION, periodic_dims=PERIODIC_DIMENSIONS)
 diffdrive_cbf = CBF # instatiate a diffdrive_cbf object with the Differential Drive dynamics object

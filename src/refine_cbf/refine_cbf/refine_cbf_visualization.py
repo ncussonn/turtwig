@@ -67,13 +67,8 @@ class RefineCBF_Visualization(Node):
         # initial state
         self.state = INITIAL_STATE
 
-        # simulation state subscription
-        self.state_sub = self.create_subscription(
-            Odometry,
-            'gazebo/odom',
-            self.state_sub_callback,
-            qos)
-    
+        self.state_sub = configure_state_feedback_subscriber(self, qos, topic_string='gazebo/odom')
+
         # cbf flag subscriber
         self.cbf_avail_sub = self.create_subscription(
             Bool,
@@ -100,11 +95,15 @@ class RefineCBF_Visualization(Node):
 
     def generate_pose_stamp(self, vertex, time_stamp):
 
+        '''
+        Generates a pose stamped message based on a vertex of a contour. Required to create a path message.
+        '''
+
         # generates a pose stamped message by using the vertices of the safe set
         pose_stamp_message = PoseStamped()
 
         # set the header
-        pose_stamp_message.header.frame_id = "odom"
+        pose_stamp_message.header.frame_id = "odom" # this is the frame that the path will be visualized in Rviz
         pose_stamp_message.header.stamp = time_stamp
         
         # set the pose
@@ -124,6 +123,10 @@ class RefineCBF_Visualization(Node):
     
     def create_path_msg(self, points):
 
+        '''
+        Creates a path message composed of points from the safe set or obstacle contours' vertices
+        '''
+
         # create a Path message
         msg = Path()
 
@@ -131,11 +134,15 @@ class RefineCBF_Visualization(Node):
         time_stamp = self.get_clock().now().to_msg()
 
         # set the header
-        msg.header.frame_id = "odom"
+        msg.header.frame_id = "odom" # this is the frame that the path will be visualized in Rviz
         msg.header.stamp = time_stamp        
 
         # set the poses
         for i in range(len(points)):
+
+            # swap x and y to reflect the grid orientation
+
+
             msg.poses.append(self.generate_pose_stamp(points[i], time_stamp))
 
         return msg
@@ -146,13 +153,19 @@ class RefineCBF_Visualization(Node):
 
     def publish_safe_set(self, paths):
 
+        '''
+        Publishes the safe set with up to 5 holes as path messages for visualization in Rviz.
+        '''
+
         # create an empty path message
         vertices = []
         msg = self.create_path_msg(vertices)
 
+        # clear prior unused safe set publishers by publishing an empty message in their place, if there are any
         for i in range(5, len(paths)-1, -1):
             
             if i == 0:
+                print("clearing safe set 1")
                 self.safe_set_1_publisher_.publish(msg)
             elif i == 1:
                 self.safe_set_2_publisher_.publish(msg)
@@ -168,6 +181,13 @@ class RefineCBF_Visualization(Node):
 
             path = paths[i]
             vertices = path.vertices
+
+            # swap the x and y coordinates to reflect the grid orientation
+            for j in range(len(vertices)):
+                temp = vertices[j][0]
+                vertices[j][0] = vertices[j][1]
+                vertices[j][1] = temp
+
             msg = self.create_path_msg(vertices)
 
             if i == 0:
@@ -181,7 +201,7 @@ class RefineCBF_Visualization(Node):
             elif i == 4:
                 self.safe_set_5_publisher_.publish(msg)
             else:
-                self.get_logger().info('Disjoint Obstacle Limit Reached. Unable to visualize all safe set holes.')
+                self.get_logger().info('Safe set hole limit reached. Unable to visualize all safe set holes.')
 
             self.get_logger().info('Publishing: Safe Set Path')
     
@@ -193,6 +213,7 @@ class RefineCBF_Visualization(Node):
         vertices = []
         msg = self.create_path_msg(vertices)
 
+        # clear prior unused obstacle publishers by publishing an empty message in their place, if there are any
         for i in range(5, len(paths)-1, -1):
 
             if i == 0:
@@ -212,7 +233,16 @@ class RefineCBF_Visualization(Node):
             
             path = paths[i]
             vertices = path.vertices
+
+            # swap the x and y coordinates to reflect the grid orientation
+            for j in range(len(vertices)):
+                temp = vertices[j][0]
+                vertices[j][0] = vertices[j][1]
+                vertices[j][1] = temp
+
             msg = self.create_path_msg(vertices)
+
+            self.get_logger().info('Publishing: Obstacle Path')
 
             if i == 0:
                 self.obstacle_1_publisher_.publish(msg)
@@ -227,16 +257,14 @@ class RefineCBF_Visualization(Node):
             else:
                 self.get_logger().info('Disjoint Obstacle Limit Reached. Unable to visualize all obstacles.')
 
-            self.get_logger().info('Publishing: Obstacle Path')
-
     def publish_initial_safe_set(self, vertices):
 
         # create a path message based on the initial safe set vertices
         msg = self.create_path_msg(vertices) 
 
         # publish the message
-        self.initial_safe_set_publisher_.publish(msg)
         self.get_logger().info('Publishing: Initial Safe Set Path')
+        self.initial_safe_set_publisher_.publish(msg)
 
     '''MAIN LOOP'''
     def timer_callback(self):
@@ -264,7 +292,7 @@ class RefineCBF_Visualization(Node):
 
         # plot safe-set contours based on the nearest theta slice to the current heading angle
         # need to phase shift slice by pi/2 and invert sign to match the grid orientation
-        theta_slice = self.grid.nearest_index(-self.state+ np.pi/2)[2] 
+        theta_slice = self.grid.nearest_index(self.state)[2] 
 
         if theta_slice == GRID_RESOLUTION[2]:
             # wrap theta slice to 0, as max grid point index does not exist
@@ -278,18 +306,21 @@ class RefineCBF_Visualization(Node):
         safe_set_paths = safe_set_contour.collections[0].get_paths()
         self.publish_safe_set(safe_set_paths)
 
+        # close the figure to prevent memory leak
+        plt.close(fig)
+
     # Simulation State Subscription
     def state_sub_callback(self, msg):
 
         # Message to terminal
-        self.get_logger().info('Received new simulation tate.')
+        self.get_logger().info('Received new state.')
 
         # convert quaternion to euler angle
         (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
 
         self.state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
         
-        print("Current Simulation State: ", self.state)
+        print("Current State: ", self.state)
 
 def main():
 

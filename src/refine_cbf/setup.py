@@ -30,6 +30,7 @@ setup(
             'nominal_policy = refine_cbf.nominal_policy:main',
             'low_level_control = refine_cbf.low_level_controller:main',
             'refine_cbf_visualization = refine_cbf.refine_cbf_visualization:main',	
+            'teleop_keyboard = refine_cbf.teleop_keyboard:main',
         ],
     },
 )

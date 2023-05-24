@@ -10,6 +10,11 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import math
 
+# ROS2 packages
+from std_msgs.msg import Bool, Float32
+from geometry_msgs.msg import Twist, TransformStamped
+from nav_msgs.msg import Odometry
+
 # Dynamics
 # class for the dynamics of the differential drive robot
 # inheritance: ControlAffineDynamics class from the cbf_opt package
@@ -272,81 +277,13 @@ class ParameterStorage:
         self.omega_nom = data[:, 7]
         print("Data loaded from " + filename)
 
-# safety filter node configuration
-def safety_filter_node_config(self):
-
-    # check if config file variables are set correctly
-    if self.use_simulation != True and self.use_simulation != False:
-        raise ValueError('Invalid config.py parameter: use_simulation')
-    
-    if self.use_corr_control != True and self.use_corr_control != False:
-        raise ValueError('Invalid config.py parameter: use_corr_control')
-    
-    if self.use_simulation == self.use_vicon:
-        raise ValueError('Invalid config.py parameter: use_simulation and use_vicon cannot both be True or both be False')
-
-    if self.use_vicon != True and self.use_vicon != False:
-        raise ValueError('Invalid config.py parameter: use_vicon')
-    
-    if self.use_nominal_policy != True and self.use_nominal_policy != False:
-        raise ValueError('Invalid config.py parameter: use_nominal_policy')
-    
-    if self.use_refineCBF != True and self.use_refineCBF != False:
-        raise ValueError('Invalid config.py parameter: use_nominal_policy')
-    
-    # # Prompt user for configuration
-    # print('Please select an experiment configuration based on the following series of prompts:')
-
-    # # using simulation or real turtlebot3 burger state feedback
-    # input_sim = input('Use simulation? (y/n): ')
-
-    # if input_sim == 'y':
-    #     self.use_simulation = True
-    #     self.use_corr_control = False
-
-    # elif input_sim == 'n':
-    #     # use corrective control or not
-    #     input_corr = input('Use corrective control? (y/n): ')
-    #     self.use_simulation = False
-
-    #     if input_corr == 'y':
-    #         self.use_corr_control = True
-    #     elif input_corr == 'n':
-    #         self.use_corr_control = False
-    #     else:
-    #         raise ValueError('Invalid input')
-    # else:
-    #     raise ValueError('Invalid input')
-
-    # # use nominal policy or filtered policy
-    # input_nom = input('Bypass safety filter? (y/n): ')
-
-    # if input_nom == 'y':
-    #     self.use_nom_policy = True
-    #     self.use_refineCBF = False # prevent unused variable errors
-    # elif input_nom == 'n':
-    #     self.use_nom_policy = False
-        
-    #     # using the refineCBF algorithm or a CBF
-    #     input_refine = input('Using refineCBF to iteratively evolve CBF? (y/n): ')
-
-    #     if input_refine == 'y':
-    #         self.use_refineCBF = True
-    #     elif input_refine == 'n':
-    #         self.use_refineCBF = False
-    #     else:
-    #         raise ValueError('Invalid input')
-    
-    # else:
-    #     raise ValueError('Invalid input')
-
 # OBSTACLE TYPE
 
 # Options [x] means current functionality implemented:
 #  [x] Rectangular
 #  [x] Circular
 #  [x] Elliptical
-#  [ ] Bounding Box
+#  [x] Bounding Box
 #  [ ] Line
 #  [ ] Point
 #  [ ] Rectangular Prism
@@ -399,37 +336,90 @@ def create_circle_constraint(center, radius, padding):
     
         return circle_constraint
 
-def create_rectangle_constraint(center, length, padding):
+# def create_rectangle_constraint(center, length, padding):
     
-        def rectangle_constraint(state):
+#         def rectangle_constraint(state):
 
-            # extend the length of the square by the padding
-            length_with_padding = length + 2 * padding
+#             # extend the length of the square by the padding
+#             length_with_padding = length + 2 * padding
 
-            # coordinate of bottom left corner of the obstacle
-            bottom_left = jnp.array(center - length_with_padding / 2)
+#             # coordinate of bottom left corner of the obstacle
+#             bottom_left = jnp.array(center - length_with_padding / 2)
             
-            # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
-            return -jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
-                                    state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
+#             # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
+#             return -jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
+#                                     state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
         
-        return rectangle_constraint
+#         return rectangle_constraint
+
+# def create_bounding_box_constraint(center, length, padding):
+    
+#         def bounding_box_constraint(state):
+
+#             # retract the length of the square by the padding
+#             length_with_padding = length - 2 * padding
+
+#             # coordinate of bottom left corner of the obstacle
+#             bottom_left = jnp.array(center - length_with_padding / 2)
+
+#             # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
+#             return jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
+#                                     state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
+        
+#         return bounding_box_constraint
+
+
+def create_rectangle_constraint(center, length, padding):
+    """
+    Creates a rectangle constraint function based on the given parameters.
+
+    Parameters:
+    center: The center coordinates of the rectangle.
+    length: The length of the rectangle.
+    padding: The padding value for the rectangle.
+
+    Returns:
+    A rectangle constraint function.
+    """
+    def rectangle_constraint(state):
+        # Extend the length of the square by the padding
+        length_with_padding = length + 2 * padding
+
+        # Coordinate of bottom left corner of the obstacle
+        bottom_left = jnp.array(center - length_with_padding / 2)
+
+        # Returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
+        return -jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0],
+                                   state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
+
+    return rectangle_constraint
+
 
 def create_bounding_box_constraint(center, length, padding):
-    
-        def bounding_box_constraint(state):
+    """
+    Creates a bounding box constraint function based on the given parameters.
 
-            # retract the length of the square by the padding
-            length_with_padding = length - 2 * padding
+    Parameters:
+    center: The center coordinates of the bounding box.
+    length: The length of the bounding box.
+    padding: The padding value for the bounding box.
 
-            # coordinate of bottom left corner of the obstacle
-            bottom_left = jnp.array(center - length_with_padding / 2)
+    Returns:
+    A bounding box constraint function.
+    """
+    def bounding_box_constraint(state):
+        # Retract the length of the square by the padding
+        length_with_padding = length - 2 * padding
 
-            # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
-            return jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
-                                    state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
-        
-        return bounding_box_constraint
+        # Coordinate of bottom left corner of the obstacle
+        bottom_left = jnp.array(center - length_with_padding / 2)
+
+        # Returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
+        return jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0],
+                                  state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
+
+    return bounding_box_constraint
+
 
 def define_constraint_set(obstacles, padding):
 
@@ -524,3 +514,102 @@ def save_float_to_file(data, filename):
         file.write(str(data) + '\n')
 
 
+def state_feedback_config_error():
+
+    '''
+    Prints an error message to the console if the state feedback configuration is not properly configured.
+    For example, if one of the GLOBAL state config variables is set to something other than True or False.
+    '''
+
+    print("Error: State feedback not properly configured. Please check config.py file.")
+    exit()
+
+def configure_state_feedback_subscriber(self, qos, topic_string: str):
+
+    '''
+    Assigns the state feedback subscriber based on the configuration in config.py
+    to the self.state_sub attribute of the ROS node class instance.
+    '''
+
+    state_sub = self.create_subscription(
+        Odometry,
+        topic_string,
+        self.state_sub_callback,
+        qos)
+
+    # if USE_SIMULATION is True:
+            
+    #         # simulation state subscription
+    #         state_sub = self.create_subscription(
+    #             Odometry,
+    #             'gazebo/odom',
+    #             self.state_sub_callback,
+    #             qos)
+
+    # elif USE_SIMULATION is False:
+
+    #     if USE_TB3_ODOMETRY is True:
+    #         # real state subscription
+    #         state_sub = self.create_subscription(
+    #             Odometry,
+    #             'odom',
+    #             self.state_sub_callback,
+    #             qos)
+            
+    #     elif USE_VICON is True:
+    #         # VICON
+    #         # real state subscription
+    #         state_sub = self.create_subscription(
+    #             TransformStamped,
+    #             '/vicon/turtlebot/turtlebot',
+    #             self.state_sub_callback,
+    #             qos)
+            
+    #     else:
+    #         state_feedback_config_error()
+                
+    # else:
+    #     state_feedback_config_error()        
+
+    return state_sub
+
+
+def configure_nominal_policy_publisher(self, qos, USE_UNFILTERED_POLICY):
+    
+    if USE_UNFILTERED_POLICY is True:
+        nom_pol_publisher_ = self.create_publisher(
+                    Twist, 
+                    'cmd_vel',
+                    qos)
+    
+    elif USE_UNFILTERED_POLICY is False:
+        nom_pol_publisher_ = self.create_publisher(
+                    Twist, 
+                    'nom_policy',
+                    qos)
+        
+    else:
+        print("Error: Nominal policy publisher not properly configured. Please check config.py file.")
+        exit()
+
+    return nom_pol_publisher_
+
+
+def compute_nominal_control(self):
+
+    nominal_policy = self.grid.interpolate(self.nominal_policy_table, self.state)
+    nominal_policy = np.reshape(nominal_policy, (1, self.dyn.control_dims))
+
+    return nominal_policy
+
+def create_nominal_policy_publishing_message(USE_UNFILTERED_POLICY):
+
+    if USE_UNFILTERED_POLICY is True:
+        nominal_policy_message = 'Publishing nominal control input over topic /cmd_vel.'
+    
+    elif USE_UNFILTERED_POLICY is False:
+        nominal_policy_message = 'Publishing nominal control input over topic /nom_policy.'  
+    else:
+        print("Error: USE_UNFILTERED_POLICY is not configured correctly. Please check config.py file.")
+
+    return nominal_policy_message
