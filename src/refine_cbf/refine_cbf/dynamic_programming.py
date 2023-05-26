@@ -33,7 +33,7 @@ class DynamicProgramming(Node):
         self.state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
         self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=PERIODIC_DIMENSIONS) # defining the grid object for hj reachability
         self.obst_padding = OBSTACLE_PADDING # Minkowski sum for padding
-        self.obstacles = OBSTACLES # initial obstacles for the experiment from config.py file
+        self.obstacles = OBSTACLES_1 # initial obstacles for the experiment from config.py file
         self.constraint_set = define_constraint_set(self.obstacles, self.obst_padding) # defining the constraint set l(x) terminal cost
         self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states) # defining the obstacle for the Hamilton Jacobi Reachability package
         self.umin = U_MIN # 1x2 array that defines the minimum values the linear and angular velocity can take
@@ -97,25 +97,29 @@ class DynamicProgramming(Node):
         # ********* Dynamic Programming *********
         # Use hj.step() to update the cbf and the gradient of the cbf
 
+        # keep track of number of iterations of the dynamic programming loop
         self.counter += 1
 
-        # introduce a new constraint set at specified iteration
-        if self.counter == NEW_OBSTACLE_ITERATION:
+        # check if a new obstacle should be introduced at the current iteration, and if so, update the CBF using it
+        introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST)
 
-            print("New obstacle introduced at iteration: ", self.counter)
+        # # introduce a new constraint set at specified iteration
+        # if self.counter == OBSTACLE_2_ITERATION:
 
-            # new dictionary of obstacles
-            obstacles = OBSTACLES_2
+        #     print("New obstacle introduced at iteration: ", self.counter)
 
-            # redifine the constraint set
-            self.constraint_set = define_constraint_set(obstacles, self.obst_padding)
-            # redefine the obstacle
-            self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
-            # redefine the brt function
-            brt_fct = lambda obstacle: (lambda t, x: jnp.minimum(x, obstacle))  # Backwards reachable TUBE!
-            # redefine the solver settings
-            self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=brt_fct(self.obstacle))
+        #     # new dictionary of obstacles
+        #     obstacles = OBSTACLES_2
 
+        #     # redifine the constraint set
+        #     self.constraint_set = define_constraint_set(obstacles, self.obst_padding)
+        #     # redefine the obstacle
+        #     self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
+        #     # redefine the brt function
+        #     brt_fct = lambda obstacle: (lambda t, x: jnp.minimum(x, obstacle))  # Backwards reachable TUBE!
+        #     # redefine the solver settings
+        #     self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=brt_fct(self.obstacle))
+        
         # Refine the CBF
         # compute new iteration of value function, warmstarted using the prior
 

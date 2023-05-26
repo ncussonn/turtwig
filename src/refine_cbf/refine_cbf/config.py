@@ -12,15 +12,6 @@ from experiment_utils import *
 # State Feedback Topic Name (Gazebo: 'gazebo/odom', Turtlebot3: 'odom', VICON: '/vicon/turtlebot/turtlebot')
 STATE_FEEDBACK_TOPIC = 'gazebo/odom'
 
-# # Use Gazebo simulation for state feedback: True or False (only can be True if USE_VICON is False)
-# USE_SIMULATION = True
-
-# # Use Turtlebot3 Odometry for state feedback: True or False (only can be True if USE_SIMULATION is False)
-# USE_TB3_ODOMETRY = False
-
-# # Use VICON arena / aerodrome for state feedback: True or False (only can be True if USE_SIMULATION is False)
-# USE_VICON = False
-
 # Use unfiltered policy (i.e. only nominal/safety agnostic control applied): True or False
 # used in the refine_cbf_launch.py and nominal_policy.py
 # If True, this will publish the /cmd_vel topic straight from the nominal policy node instead of the safety filter node
@@ -37,7 +28,7 @@ USE_MANUAL_CONTROLLER = False
 USE_REFINECBF = True
 
 # Refine CBF Iteration Time Step (dt)
-TIME_STEP = 0.25
+TIME_STEP = 0.15
 
 # Theta Slice (for 2D visualization)
 THETA_SLICE = 41
@@ -47,7 +38,7 @@ INITIAL_STATE = np.array([0.5, 0.5, np.pi/2])
 
 ## NOMINAL POLICY TABLE
 
-NOMINAL_POLICY_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid.npy'
+NOMINAL_POLICY_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid_goal_1pt5x_1y.npy'
 
 ## HAMILTON JACOBI REACHABILITY GRID
 
@@ -111,8 +102,8 @@ GAMMA = 0.5
 SCALAR = 1.0
 
 # Initial CBF Parameters
-RADIUS_CBF = 0.15 # radius of the circular CBF
-CENTER_CBF = np.array([0.5, 0.5]) # center of the circular CBF
+RADIUS_CBF = 0.25 # radius of the circular CBF
+CENTER_CBF = np.array([0.5, 1.0]) # center of the circular CBF
 
 CBF = DiffDriveCBF(DYNAMICS, {"center": CENTER_CBF, "r": RADIUS_CBF, "scalar": SCALAR}, test=False)
 
@@ -124,7 +115,7 @@ CBF_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomput
 #NOTE: Package can currently only handle up to 5 DISJOINT obstacles and 1 update to the obstacles
 
 # a dictionary of obstacles with the key being the obstacle type and the value being a dictionary of obstacle parameters
-OBSTACLES = {
+OBSTACLES_1 = {
     # "circle": {
     #     "circle_1": {"center": np.array([1.5, 0.5]), "radius": 0.5},
     #     "circle_2": {"center": np.array([1.5, 1.5]), "radius": 0.5},
@@ -142,12 +133,12 @@ OBSTACLES = {
 }
 
 # introduces the below obstacle dictionary into the environment at the given iteration
-NEW_OBSTACLE_ITERATION = 10
+OBSTACLE_2_ITERATION = 10
 
 OBSTACLES_2 = {
     "circle": {
-        "circle_1": {"center": np.array([1.0, 0.0]), "radius": 0.5},
-        "circle_2": {"center": np.array([1.0, 2.0]), "radius": 0.5},
+        "circle_1": {"center": np.array([1.75, 1.75]), "radius": 0.75},
+        "circle_2": {"center": np.array([1.75, 0.25]), "radius": 0.75},
     },
     # "rectangle": {
     #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
@@ -161,10 +152,12 @@ OBSTACLES_2 = {
 OBSTACLE_3_ITERATION = 20
 
 OBSTACLES_3 = {
+
     "circle": {
-        "circle_1": {"center": np.array([1.0, 0.0]), "radius": 0.5},
-        "circle_2": {"center": np.array([1.0, 2.0]), "radius": 0.5},
+        "circle_1": {"center": np.array([2.0, 2.0]), "radius": 1.0},
+        "circle_2": {"center": np.array([2.0, 0]), "radius": 1.0},
     },
+    
     # "rectangle": {
     #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
     #     "rectangle_2": {"center": np.array([1.0, 1.66]), "length": np.array([0.25, 0.66])},
@@ -177,9 +170,10 @@ OBSTACLES_3 = {
 OBSTACLE_4_ITERATION = 30
 
 OBSTACLES_4 = {
+
     "circle": {
-        "circle_1": {"center": np.array([1.0, 0.0]), "radius": 0.5},
-        "circle_2": {"center": np.array([1.0, 2.0]), "radius": 0.5},
+        "circle_1": {"center": np.array([2.0, 2.25]), "radius": 1.0},
+        "circle_2": {"center": np.array([2.0, -0.25]), "radius": 1.0},
     },
     # "rectangle": {
     #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
@@ -193,10 +187,12 @@ OBSTACLES_4 = {
 OBSTACLE_5_ITERATION = 40
 
 OBSTACLES_5 = {
+
     "circle": {
-        "circle_1": {"center": np.array([1.0, 0.0]), "radius": 0.5},
-        "circle_2": {"center": np.array([1.0, 2.0]), "radius": 0.5},
+        "circle_1": {"center": np.array([2.0, 2.75]), "radius": 1.0},
+        "circle_2": {"center": np.array([2.0, -0.75]), "radius": 1.0},
     },
+    
     # "rectangle": {
     #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
     #     "rectangle_2": {"center": np.array([1.0, 1.66]), "length": np.array([0.25, 0.66])},
@@ -205,6 +201,16 @@ OBSTACLES_5 = {
         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
     },
 }
+
+# define the obstacle dictionary list
+# each element in the list is a dictionary of obstacles
+OBSTACLE_LIST = [OBSTACLES_1, OBSTACLES_2, OBSTACLES_3, OBSTACLES_4, OBSTACLES_5]
+# each element in the list is a integer representing the iteration at which the obstacle associated obstacle set is introduced
+OBSTACLE_ITERATION_LIST = [OBSTACLE_2_ITERATION, OBSTACLE_3_ITERATION, OBSTACLE_4_ITERATION, OBSTACLE_5_ITERATION]
+
+# # Dictionary List
+# # TODO: Implement this
+# OBSTACLES = [OBSTACLES_1,OBSTACLES_2,OBSTACLES_3,OBSTACLES_4,OBSTACLES_5]
 
 # padding around the obstacle in meters
 # float that inflates the obstacles by a certain amount using Minkoswki sum

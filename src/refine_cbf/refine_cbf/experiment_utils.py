@@ -613,3 +613,56 @@ def create_nominal_policy_publishing_message(USE_UNFILTERED_POLICY):
         print("Error: USE_UNFILTERED_POLICY is not configured correctly. Please check config.py file.")
 
     return nominal_policy_message
+
+
+def create_new_obstacle_set(self, obstacles, iteration):
+
+    print('New obstacle introduced at iteration: ', iteration)
+
+    # redifine the constraint set
+    self.constraint_set = define_constraint_set(obstacles, self.obst_padding)
+    
+
+def introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST):
+
+    # introduce a new constraint set at specified iteration
+    if self.counter == OBSTACLE_ITERATION_LIST[0]:        
+        create_new_obstacle_set(self, OBSTACLE_LIST[1], OBSTACLE_ITERATION_LIST[0])
+
+    elif self.counter == OBSTACLE_ITERATION_LIST[1]:        
+        create_new_obstacle_set(self, OBSTACLE_LIST[2], OBSTACLE_ITERATION_LIST[1])
+
+    elif self.counter == OBSTACLE_ITERATION_LIST[2]:
+        create_new_obstacle_set(self, OBSTACLE_LIST[3], OBSTACLE_ITERATION_LIST[2])
+
+    elif self.counter == OBSTACLE_ITERATION_LIST[3]:
+        create_new_obstacle_set(self, OBSTACLE_LIST[4], OBSTACLE_ITERATION_LIST[3])
+
+    else:
+        return
+
+    # redefine the obstacle
+    self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
+    # redefine the brt function
+    brt_fct = lambda obstacle: (lambda t, x: jnp.minimum(x, obstacle))  # Backwards reachable TUBE!
+    # redefine the solver settings
+    self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=brt_fct(self.obstacle))
+
+
+def update_obstacle_set(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST, OBSTACLE_PADDING):
+
+    # introduce a new constraint set at specified iteration
+    if self.counter == OBSTACLE_ITERATION_LIST[0]:        
+        create_new_obstacle_set(self, OBSTACLE_LIST[1], OBSTACLE_ITERATION_LIST[0])
+
+    elif self.counter == OBSTACLE_ITERATION_LIST[1]:        
+        create_new_obstacle_set(self, OBSTACLE_LIST[2], OBSTACLE_ITERATION_LIST[1])
+
+    elif self.counter == OBSTACLE_ITERATION_LIST[2]:
+        create_new_obstacle_set(self, OBSTACLE_LIST[3], OBSTACLE_ITERATION_LIST[2])
+
+    elif self.counter == OBSTACLE_ITERATION_LIST[3]:
+        create_new_obstacle_set(self, OBSTACLE_LIST[4], OBSTACLE_ITERATION_LIST[3])
+
+    # redefine the obstacle
+    self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
