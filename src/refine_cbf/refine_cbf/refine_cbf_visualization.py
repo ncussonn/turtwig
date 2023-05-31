@@ -22,6 +22,8 @@ from config import *
 import matplotlib.pyplot as plt
 from rclpy.qos import QoSProfile
 
+import pickle
+
 class RefineCBF_Visualization(Node):
         
     def __init__(self):
@@ -52,6 +54,7 @@ class RefineCBF_Visualization(Node):
         self.safe_set_4_publisher_ = self.create_publisher(Path, 'safe_set_4', qos)
         self.safe_set_5_publisher_ = self.create_publisher(Path, 'safe_set_5', qos)
         self.initial_safe_set_publisher_ = self.create_publisher(Path, 'initial_safe_set', qos)
+        self.goal_set_publisher_ = self.create_publisher(Path, 'goal_set', qos)
 
         timer_period = 0.005  # delay between starting iterations [seconds]
 
@@ -61,8 +64,11 @@ class RefineCBF_Visualization(Node):
         self.safe_set_vertices = []
         self.initial_safe_set_vertices = []
 
-        self.counter = 0
+        self.iteration = 0
         self.cbf = INITIAL_CBF
+
+        # cbf to save
+        self.cbf_to_save = {self.iteration:INITIAL_CBF}
         
         # initial state
         self.state = INITIAL_STATE
@@ -84,14 +90,17 @@ class RefineCBF_Visualization(Node):
 
         if bool_msg.data is True:
             
+            # increment the counter
+            self.iteration+=1
+
             # Halt the robot to prevent unsafe behavior while the CBF is updated
             self.get_logger().info('New CBF received, stopping robot and loading new CBF')
 
             # load new tabular cbf
             self.cbf = jnp.load('./log/cbf.npy')
 
-            # increment the counter
-            self.counter+=1
+            # update the cbf to save
+            self.cbf_to_save[self.iteration] = self.cbf
 
     def generate_pose_stamp(self, vertex, time_stamp):
 
@@ -139,10 +148,6 @@ class RefineCBF_Visualization(Node):
 
         # set the poses
         for i in range(len(points)):
-
-            # swap x and y to reflect the grid orientation
-
-
             msg.poses.append(self.generate_pose_stamp(points[i], time_stamp))
 
         return msg
@@ -182,11 +187,7 @@ class RefineCBF_Visualization(Node):
             path = paths[i]
             vertices = path.vertices
 
-            # swap the x and y coordinates to reflect the grid orientation
-            for j in range(len(vertices)):
-                temp = vertices[j][0]
-                vertices[j][0] = vertices[j][1]
-                vertices[j][1] = temp
+            vertices = swap_x_y_coordinates(vertices)
 
             msg = self.create_path_msg(vertices)
 
@@ -234,11 +235,7 @@ class RefineCBF_Visualization(Node):
             path = paths[i]
             vertices = path.vertices
 
-            # swap the x and y coordinates to reflect the grid orientation
-            for j in range(len(vertices)):
-                temp = vertices[j][0]
-                vertices[j][0] = vertices[j][1]
-                vertices[j][1] = temp
+            vertices = swap_x_y_coordinates(vertices)
 
             msg = self.create_path_msg(vertices)
 
@@ -259,11 +256,7 @@ class RefineCBF_Visualization(Node):
 
     def publish_initial_safe_set(self, vertices):
 
-        # swap the x and y coordinates to reflect the grid orientation
-        for j in range(len(vertices)):
-            temp = vertices[j][0]
-            vertices[j][0] = vertices[j][1]
-            vertices[j][1] = temp
+        vertices = swap_x_y_coordinates(vertices)
 
         # create a path message based on the initial safe set vertices
         msg = self.create_path_msg(vertices) 
@@ -271,6 +264,15 @@ class RefineCBF_Visualization(Node):
         # publish the message
         self.get_logger().info('Publishing: Initial Safe Set Path')
         self.initial_safe_set_publisher_.publish(msg)
+
+    def publish_goal_set(self, vertices):
+
+        # create a path message based on the initial safe set vertices
+        msg = self.create_path_msg(vertices) 
+
+        # publish the message
+        self.get_logger().info('Publishing: Goal Set Path')
+        self.goal_set_publisher_.publish(msg)
 
     '''MAIN LOOP'''
     def timer_callback(self):
@@ -280,19 +282,18 @@ class RefineCBF_Visualization(Node):
         # initiate a figure for matplotlib to plot the contours - size is irrelevant
         fig, self.ax = plt.subplots(1, 1, figsize=(1,1 ))
 
-        ## publish the initial safe set contour as a path message on the first iteration
-        if self.counter == 0:
+        ## generate the initial cbf safe set contour and goal set
+        if self.iteration == 0:
             safe_set_contour = self.ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., 0], levels=[0], colors='k')
             self.initial_safe_set_vertices = safe_set_contour.collections[0].get_paths()[0].vertices # retrieve vertices of the contour for Rviz visualization
             self.publish_initial_safe_set(self.initial_safe_set_vertices)   # publish the vertices as a path message
+
+            # generate the goal set vertices
+            self.goal_set_vertices = generate_circle_vertices(radius = GOAL_SET_RADIUS, center = GOAL_SET_CENTER, num_vertices = GOAL_SET_VERTEX_COUNT)
+            self.publish_goal_set(self.goal_set_vertices) # publish the goal set vertices as a path message
         
         # update the obstacle set
-        update_obstacle_set(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST, OBSTACLE_PADDING)
-
-        # if self.counter == :
-        #     # update the obstacle set
-        #     self.constraint_set = define_constraint_set(OBSTACLES_2, OBSTACLE_PADDING)
-        #     self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
+        update_obstacle_set(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST)
 
         # publish obstacle contours as a path message
         self.obst_contour = self.ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.obstacle[..., 0], levels=[0], colors='r')
@@ -331,6 +332,19 @@ class RefineCBF_Visualization(Node):
         
         print("Current State: ", self.state)
 
+    # State Subscription for TransformStamped
+    def state_sub_callback_vicon(self, msg):
+
+        # Message to terminal
+        self.get_logger().info('Received new state information from Vicon arena.')
+
+        # convert quaternion to euler angle
+        (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
+
+        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw])
+        
+        print("Current State: ", self.state)
+
 def main():
 
     rclpy.init()
@@ -341,7 +355,12 @@ def main():
         rclpy.spin(refinecbf_visualization)
     
     except KeyboardInterrupt:
-        refinecbf_visualization.get_logger().info('Keyboard interrupt, shutting down.\n')
+        refinecbf_visualization.get_logger().info('Keyboard interrupt, shutting down and saving CBF.\n')
+        # save the cbf dictionary
+        f = open('./log/cbf_to_save.pkl', 'wb')
+        pickle.dump(refinecbf_visualization.cbf_to_save, f)
+        f.close()
+
         
 
     # Destroy the node explicitly

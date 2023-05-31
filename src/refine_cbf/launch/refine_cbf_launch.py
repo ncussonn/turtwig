@@ -11,6 +11,7 @@ if USE_MANUAL_CONTROLLER:
 
     def generate_launch_description():
         return LaunchDescription([
+            # remove nominal policy node to allow for manual control
             Node(
                 package='refine_cbf',
                 executable='safety_filter',
@@ -22,11 +23,7 @@ if USE_MANUAL_CONTROLLER:
             Node(
                 package='refine_cbf',
                 executable='refine_cbf_visualization',
-            ),
-            # Node(
-            #     package='refine_cbf',
-            #     executable='teleop_keyboard',
-            # ),            
+            ),         
         ])
     
 else:

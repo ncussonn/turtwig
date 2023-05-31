@@ -22,8 +22,6 @@ import time
 from config import *
 import logging
 
-data_filename = "/home/nate/turtwig_ws/log/experiment_data.txt"
-
 # import proper modules based on the operating system for correct functions and methods 
 # for managing console or terminal I/O
 # 'nt' is the name of the operating system for Windows
@@ -80,7 +78,8 @@ class SafetyFilter(Node):
         if USE_REFINECBF is True:
             # Use the initial value function to generate the tabular CBF for safety filter
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
-            self.tabular_cbf.vf_table = np.array(self.cbf[0]) # use time index 0 for initial cbf
+            #self.tabular_cbf.vf_table = np.array(self.cbf[0]) # use time index 0 for initial cbf
+            self.tabular_cbf.vf_table = INITIAL_CBF
         else: 
             # Use the final value function to generate the tabular CBF for safety filter
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
@@ -96,7 +95,7 @@ class SafetyFilter(Node):
 
         # quality of service profile for subscriber and publisher, provides buffer for messages
         # a depth of 10 suffices in most cases, but this can be increased if needed
-        qos = QoSProfile(depth=10)
+        qos = QoSProfile(depth=SAFETY_FILTER_QOS_DEPTH)
 
         # control publisher
         self.cmd_vel_publisher_ = self.create_publisher(
@@ -111,7 +110,7 @@ class SafetyFilter(Node):
             qos)
 
         # callback timer (how long to wait before running callback function)
-        timer_period = 0.033 # seconds (equivalent to about ~20Hz, same as odometry/IMU update rate)
+        timer_period = SAFETY_FILTER_TIMER_SECONDS # 0.099#0.033 # seconds (equivalent to about ~20Hz, same as odometry/IMU update rate)
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
         # cbf flag subscriber
@@ -193,6 +192,9 @@ class SafetyFilter(Node):
         # Solve the QP for the optimal control input
         control_input = self.diffdrive_asif(self.state, 0.0, nominal_policy)
 
+        # flip sign of angular control input to see if it fixes the problem
+        control_input[0,1] = -control_input[0,1]
+
         print("CBF-QP solved in %s seconds" % (time.time() - start_time))
 
         print("Filtered Control Input:", control_input)
@@ -216,7 +218,6 @@ class SafetyFilter(Node):
         # if self.use_corr_control is True:
         #     # Add the corrective control input to the optimal control input
         #     control_input = control_input + self.corrective_control
-
 
         # Publish the Optimal Control Input
         ############################################
@@ -252,7 +253,7 @@ class SafetyFilter(Node):
         if msg.data is True:
             
             # Halt the robot to prevent unsafe behavior while the CBF is updated
-            self.get_logger().info('New CBF received, stopping robot and loading new CBF')
+            self.get_logger().info('New CBF received, loading new CBF')
 
             # load new tabular cbf
             self.cbf = jnp.load('./log/cbf.npy')
@@ -261,7 +262,7 @@ class SafetyFilter(Node):
             self.tabular_cbf.vf_table = np.array(self.cbf)
 
             # Assign the tabular cbf to the diffdrive asif
-            self.diffdrive_asif.cbf = self.tabular_cbf 
+            self.diffdrive_asif.cbf = self.tabular_cbf
 
     # State Subscription
     def state_sub_callback(self, msg):
@@ -273,6 +274,19 @@ class SafetyFilter(Node):
         (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
 
         self.state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
+        
+        print("Current State: ", self.state)
+
+    # State Subscription for TransformStamped
+    def state_sub_callback_vicon(self, msg):
+
+        # Message to terminal
+        self.get_logger().info('Received new state information from Vicon arena.')
+
+        # convert quaternion to euler angle
+        (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
+
+        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw])
         
         print("Current State: ", self.state)
 
@@ -327,11 +341,8 @@ def main():
 
             safety_filter.cmd_vel_publisher_.publish(msg)
 
-            # save visualization parameters
-            safety_filter.data_logger.save_data(data_filename)
-
-            # plot all the data
-            # safety_filter.data_logger.plot_all()
+            # save data to file
+            safety_filter.data_logger.save_data(DATA_FILENAME)
 
         finally:
 

@@ -530,46 +530,24 @@ def configure_state_feedback_subscriber(self, qos, topic_string: str):
     Assigns the state feedback subscriber based on the configuration in config.py
     to the self.state_sub attribute of the ROS node class instance.
     '''
+    print("Logic check:", topic_string == 'vicon/turtlebot_1/turtlebot_1')
 
-    state_sub = self.create_subscription(
-        Odometry,
-        topic_string,
-        self.state_sub_callback,
-        qos)
-
-    # if USE_SIMULATION is True:
-            
-    #         # simulation state subscription
-    #         state_sub = self.create_subscription(
-    #             Odometry,
-    #             'gazebo/odom',
-    #             self.state_sub_callback,
-    #             qos)
-
-    # elif USE_SIMULATION is False:
-
-    #     if USE_TB3_ODOMETRY is True:
-    #         # real state subscription
-    #         state_sub = self.create_subscription(
-    #             Odometry,
-    #             'odom',
-    #             self.state_sub_callback,
-    #             qos)
-            
-    #     elif USE_VICON is True:
-    #         # VICON
-    #         # real state subscription
-    #         state_sub = self.create_subscription(
-    #             TransformStamped,
-    #             '/vicon/turtlebot/turtlebot',
-    #             self.state_sub_callback,
-    #             qos)
-            
-    #     else:
-    #         state_feedback_config_error()
-                
-    # else:
-    #     state_feedback_config_error()        
+    if topic_string == 'gazebo/odom' or topic_string == 'odom':
+        state_sub = self.create_subscription(
+            Odometry,
+            topic_string,
+            self.state_sub_callback,
+            qos)
+        
+    elif topic_string == 'vicon/turtlebot_1/turtlebot_1':
+        state_sub = self.create_subscription(
+            TransformStamped,
+            topic_string,
+            self.state_sub_callback_vicon,
+            qos)
+        
+    else:
+        state_feedback_config_error()        
 
     return state_sub
 
@@ -626,16 +604,16 @@ def create_new_obstacle_set(self, obstacles, iteration):
 def introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST):
 
     # introduce a new constraint set at specified iteration
-    if self.counter == OBSTACLE_ITERATION_LIST[0]:        
+    if self.iteration == OBSTACLE_ITERATION_LIST[0]:        
         create_new_obstacle_set(self, OBSTACLE_LIST[1], OBSTACLE_ITERATION_LIST[0])
 
-    elif self.counter == OBSTACLE_ITERATION_LIST[1]:        
+    elif self.iteration == OBSTACLE_ITERATION_LIST[1]:        
         create_new_obstacle_set(self, OBSTACLE_LIST[2], OBSTACLE_ITERATION_LIST[1])
 
-    elif self.counter == OBSTACLE_ITERATION_LIST[2]:
+    elif self.iteration == OBSTACLE_ITERATION_LIST[2]:
         create_new_obstacle_set(self, OBSTACLE_LIST[3], OBSTACLE_ITERATION_LIST[2])
 
-    elif self.counter == OBSTACLE_ITERATION_LIST[3]:
+    elif self.iteration == OBSTACLE_ITERATION_LIST[3]:
         create_new_obstacle_set(self, OBSTACLE_LIST[4], OBSTACLE_ITERATION_LIST[3])
 
     else:
@@ -649,20 +627,45 @@ def introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST):
     self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=brt_fct(self.obstacle))
 
 
-def update_obstacle_set(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST, OBSTACLE_PADDING):
+def update_obstacle_set(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST):
 
     # introduce a new constraint set at specified iteration
-    if self.counter == OBSTACLE_ITERATION_LIST[0]:        
+    if self.iteration == OBSTACLE_ITERATION_LIST[0]:        
         create_new_obstacle_set(self, OBSTACLE_LIST[1], OBSTACLE_ITERATION_LIST[0])
 
-    elif self.counter == OBSTACLE_ITERATION_LIST[1]:        
+    elif self.iteration == OBSTACLE_ITERATION_LIST[1]:        
         create_new_obstacle_set(self, OBSTACLE_LIST[2], OBSTACLE_ITERATION_LIST[1])
 
-    elif self.counter == OBSTACLE_ITERATION_LIST[2]:
+    elif self.iteration == OBSTACLE_ITERATION_LIST[2]:
         create_new_obstacle_set(self, OBSTACLE_LIST[3], OBSTACLE_ITERATION_LIST[2])
 
-    elif self.counter == OBSTACLE_ITERATION_LIST[3]:
+    elif self.iteration == OBSTACLE_ITERATION_LIST[3]:
         create_new_obstacle_set(self, OBSTACLE_LIST[4], OBSTACLE_ITERATION_LIST[3])
 
     # redefine the obstacle
     self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
+
+def swap_x_y_coordinates(vertices):
+
+    # swap the x and y coordinates to reflect the grid rotation from Python to Rviz / Gazebo
+    for j in range(len(vertices)):
+        temp = vertices[j][0]
+        vertices[j][0] = vertices[j][1]
+        vertices[j][1] = temp
+
+    return vertices
+
+def generate_circle_vertices(radius, num_vertices, center=(0, 0)):
+    vertices = np.zeros((num_vertices + 1, 2))  # Increased size by 1
+    angle_increment = 2 * math.pi / num_vertices
+
+    for i in range(num_vertices):
+        angle = i * angle_increment
+        x = center[0] + radius * math.cos(angle)
+        y = center[1] + radius * math.sin(angle)
+        vertices[i] = [x, y]
+
+    # Duplicate initial vertex
+    vertices[-1] = vertices[0]
+
+    return vertices

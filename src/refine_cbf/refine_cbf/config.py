@@ -7,10 +7,13 @@ from refine_cbfs.dynamics import HJControlAffineDynamics
 from cbf_opt import ControlAffineDynamics, ControlAffineCBF
 from experiment_utils import *
 
+# Save location of experiment data (written to in safety_filter.py)
+DATA_FILENAME = '/home/nate/turtwig_ws/log/experiment_1_dataset_1.txt'
+
 ## EXPERIMENT PARAMETERS
 
-# State Feedback Topic Name (Gazebo: 'gazebo/odom', Turtlebot3: 'odom', VICON: '/vicon/turtlebot/turtlebot')
-STATE_FEEDBACK_TOPIC = 'gazebo/odom'
+# State Feedback Topic Name (Gazebo: 'gazebo/odom', Turtlebot3: 'odom', VICON: 'vicon/turtlebot/turtlebot')
+STATE_FEEDBACK_TOPIC = 'vicon/turtlebot_1/turtlebot_1'
 
 # Use unfiltered policy (i.e. only nominal/safety agnostic control applied): True or False
 # used in the refine_cbf_launch.py and nominal_policy.py
@@ -18,7 +21,7 @@ STATE_FEEDBACK_TOPIC = 'gazebo/odom'
 USE_UNFILTERED_POLICY = False
 
 # Use a manually controller for the nominal policy: True or False
-USE_MANUAL_CONTROLLER = False
+USE_MANUAL_CONTROLLER = True
 
 # TODO: Add low-level corrective controller functionality
 # Use corrective controller: True or False
@@ -34,10 +37,18 @@ TIME_STEP = 0.15
 THETA_SLICE = 41
 
 # Initial State
-INITIAL_STATE = np.array([0.5, 0.5, np.pi/2])
+INITIAL_STATE = np.array([0.5, 1.0, -np.pi/2])
+
+# Safety Filter ROS Node Timer
+SAFETY_FILTER_TIMER_SECONDS = 0.066
+SAFETY_FILTER_QOS_DEPTH = 50
+
+# Nominal Policy ROS Node Timer
+NOMINAL_POLICY_TIMER_SECONDS = 0.066
+NOMINAL_POLICY_QOS_DEPTH = 50
 
 ## NOMINAL POLICY TABLE
-
+# Insert the filename of the nominal policy table numpy file, that was precomputed.
 NOMINAL_POLICY_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid_goal_1pt5x_1y.npy'
 
 ## HAMILTON JACOBI REACHABILITY GRID
@@ -95,14 +106,14 @@ DYNAMICS_HAMILTON_JACOBI_REACHABILITY_WITH_DISTURBANCE = HJControlAffineDynamics
 
 ## CONTROL BARRIER FUNCTION (CBF)
 
-# Gamma value / discount rate for the CBVF
+# Gamma value / discount rate for the CBVF - affects how quickly system can approach boundary of the safe set
 GAMMA = 0.5
 
 # Scalar multiplier for the CBF
 SCALAR = 1.0
 
 # Initial CBF Parameters
-RADIUS_CBF = 0.25 # radius of the circular CBF
+RADIUS_CBF = 0.33 # radius of the circular CBF
 CENTER_CBF = np.array([0.5, 1.0]) # center of the circular CBF
 
 CBF = DiffDriveCBF(DYNAMICS, {"center": CENTER_CBF, "r": RADIUS_CBF, "scalar": SCALAR}, test=False)
@@ -192,7 +203,6 @@ OBSTACLES_5 = {
         "circle_1": {"center": np.array([2.0, 2.75]), "radius": 1.0},
         "circle_2": {"center": np.array([2.0, -0.75]), "radius": 1.0},
     },
-    
     # "rectangle": {
     #     "rectangle_1": {"center": np.array([1.0, 0.33]), "length": np.array([0.25, 0.66])},
     #     "rectangle_2": {"center": np.array([1.0, 1.66]), "length": np.array([0.25, 0.66])},
@@ -202,20 +212,59 @@ OBSTACLES_5 = {
     },
 }
 
+# EXPERIMENT 1 OBSTACLES
+# Experiment 1 Obstacles
+OBSTACLES_1 = {
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([0.5, 1.0]), "length": np.array([1.0, 2.0])},
+    },
+}
+
+# Experiment 1 Obstacles
+OBSTACLES_2 = {
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([0.5, 1.0]), "length": np.array([1.0, 2.0])},
+    },
+}
+
+# Experiment 1 Obstacles
+OBSTACLES_3 = {
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([0.5, 1.0]), "length": np.array([1.0, 2.0])},
+    },
+}
+
+# Experiment 1 Obstacles
+OBSTACLES_4 = {
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([0.5, 1.0]), "length": np.array([1.0, 2.0])},
+    },
+}
+
+# Experiment 1 Obstacles
+OBSTACLES_5 = {
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([0.5, 1.0]), "length": np.array([1.0, 2.0])},
+    },
+}
+
 # define the obstacle dictionary list
 # each element in the list is a dictionary of obstacles
 OBSTACLE_LIST = [OBSTACLES_1, OBSTACLES_2, OBSTACLES_3, OBSTACLES_4, OBSTACLES_5]
 # each element in the list is a integer representing the iteration at which the obstacle associated obstacle set is introduced
 OBSTACLE_ITERATION_LIST = [OBSTACLE_2_ITERATION, OBSTACLE_3_ITERATION, OBSTACLE_4_ITERATION, OBSTACLE_5_ITERATION]
 
-# # Dictionary List
-# # TODO: Implement this
-# OBSTACLES = [OBSTACLES_1,OBSTACLES_2,OBSTACLES_3,OBSTACLES_4,OBSTACLES_5]
+OBSTACLE_ITERATION_LIST = [10000, 100001, 100002, 100003]
 
 # padding around the obstacle in meters
 # float that inflates the obstacles by a certain amount using Minkoswki sum
 # For example, if the maximum radius of a robot is 0.15 m, the padding should be at least 0.15 m
 OBSTACLE_PADDING = 0.11
+
+# Goal Set Parameters
+GOAL_SET_RADIUS = 0.15
+GOAL_SET_CENTER = np.array([1.5, 1.0])
+GOAL_SET_VERTEX_COUNT = 25
 
 ## DYNAMICS MODEL
 
@@ -257,7 +306,6 @@ OBSTACLE_PADDING = 0.11
 state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
 grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(state_domain, GRID_RESOLUTION, periodic_dims=PERIODIC_DIMENSIONS)
 diffdrive_cbf = CBF # instatiate a diffdrive_cbf object with the Differential Drive dynamics object
-diffdrive_cbf = DiffDriveCBF(DYNAMICS, {"center": CENTER_CBF, "r": RADIUS_CBF, "scalar": SCALAR}, test=False) # instatiate a diffdrive_cbf object with the Differential Drive dynamics object
 diffdrive_tabular_cbf = refine_cbfs.TabularControlAffineCBF(DYNAMICS, dict(), grid=grid) # tabularize the cbf so that value can be calculated at each grid point
 diffdrive_tabular_cbf.tabularize_cbf(diffdrive_cbf) # tabularize the cbf so that value can be calculated at each grid point
 INITIAL_CBF = diffdrive_tabular_cbf.vf_table # initial CBF

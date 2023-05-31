@@ -68,19 +68,18 @@ class NominalPolicy(Node):
         self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=2)
 
         # initializing common parameters
-        self.state = np.array([0.5, 0.5, 0])  # initial state
-        self.real_state = np.array([0.5, 0.5, 0]) # initial real state
+        self.state = INITIAL_STATE  # initial state
         self.nominal_policy = np.array([0.1, 0])   # initial nominal policy (used to prevent errors when nominal policy table is not used if command velocity publisher is called before the nominal policy is heard)
 
         # quality of service profile for subscriber and publisher, provides buffer for messages
         # a depth of 10 suffices in most cases, but this can be increased if needed
-        qos = QoSProfile(depth=10)
+        qos = QoSProfile(depth=NOMINAL_POLICY_QOS_DEPTH)
 
         # control publisher
         self.nom_pol_publisher_ = configure_nominal_policy_publisher(self, qos, USE_UNFILTERED_POLICY)
         
         # callback timer (how long to wait before running callback function)
-        timer_period = 0.033 # seconds (equivalent to about ~20Hz, same as odometry/IMU update rate, any higher is pointless additional computing resources)
+        timer_period = NOMINAL_POLICY_TIMER_SECONDS # 0.033 # seconds (equivalent to about ~20Hz, same as odometry/IMU update rate, any higher is pointless additional computing resources)
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
         # STATE FEEDBACK
@@ -150,6 +149,19 @@ class NominalPolicy(Node):
         (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
 
         self.state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
+        
+        print("Current State: ", self.state)
+
+    # State Subscription for TransformStamped
+    def state_sub_callback_vicon(self, msg):
+
+        # Message to terminal
+        self.get_logger().info('Received new state information from Vicon arena.')
+
+        # convert quaternion to euler angle
+        (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
+
+        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw])
         
         print("Current State: ", self.state)
 

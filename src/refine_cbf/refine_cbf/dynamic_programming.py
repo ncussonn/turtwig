@@ -41,9 +41,7 @@ class DynamicProgramming(Node):
         self.dyn = DYNAMICS # instatiate an object called dyn based on the DiffDriveDynamics class
         self.dyn_jnp = DYNAMICS_JAX_NUMPY # instatiate an objected called dyn_jnp based on the DiffDriveJNPDynamics class
         self.dyn_hjr = DYNAMICS_HAMILTON_JACOBI_REACHABILITY # instatiate the dynamics for hjr using jax numpy dynamics object
-        #self.dyn_hjr = DYNAMICS_HAMILTON_JACOBI_REACHABILITY_WITH_DISTURBANCE
         self.diffdrive_cbf = CBF # instatiate a diffdrive_cbf object with the Differential Drive dynamics object
-        self.diffdrive_cbf = DiffDriveCBF(DYNAMICS, {"center": CENTER_CBF, "r": RADIUS_CBF, "scalar": SCALAR}, test=False) # instatiate a diffdrive_cbf object with the Differential Drive dynamics object
         self.diffdrive_tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, dict(), grid=self.grid) # tabularize the cbf so that value can be calculated at each grid point
         self.diffdrive_tabular_cbf.tabularize_cbf(self.diffdrive_cbf) # tabularize the cbf so that value can be calculated at each grid point
         self.brt_fct = lambda obstacle: (lambda t, x: jnp.minimum(x, obstacle))  # Backwards reachable TUBE!
@@ -51,13 +49,6 @@ class DynamicProgramming(Node):
         self.init_value = self.diffdrive_tabular_cbf.vf_table # initial CBF
         self.dt = TIME_STEP # time step for an HJ iteration 
 
-        # DEBUG PLOT
-        fig, ax = plt.subplots()
-        ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.obstacle[..., 0], levels=[0], colors='k')
-        ax.contourf(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.diffdrive_tabular_cbf.vf_table[..., 0])
-        cbar = fig.colorbar(ax.contourf(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.diffdrive_tabular_cbf.vf_table[..., 0]))
-
-        
         self.cbf_publisher_ = self.create_publisher(Bool, 'cbf_availability', 10)
         
         timer_period = 0.001  # delay between starting iterations [seconds]
@@ -65,7 +56,7 @@ class DynamicProgramming(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback) # calls the timer_callback function every timer_period
         self.cbf_available = False
 
-        self.counter = 0 # counter for the number of iterations of the dynamic programming loop
+        self.iteration = 0 # counter for the number of iterations of the dynamic programming loop
         self.cbf = self.init_value
         self.time = 0.0
         self.target_time = -self.dt
@@ -98,31 +89,11 @@ class DynamicProgramming(Node):
         # Use hj.step() to update the cbf and the gradient of the cbf
 
         # keep track of number of iterations of the dynamic programming loop
-        self.counter += 1
+        self.iteration += 1
 
         # check if a new obstacle should be introduced at the current iteration, and if so, update the CBF using it
         introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST)
-
-        # # introduce a new constraint set at specified iteration
-        # if self.counter == OBSTACLE_2_ITERATION:
-
-        #     print("New obstacle introduced at iteration: ", self.counter)
-
-        #     # new dictionary of obstacles
-        #     obstacles = OBSTACLES_2
-
-        #     # redifine the constraint set
-        #     self.constraint_set = define_constraint_set(obstacles, self.obst_padding)
-        #     # redefine the obstacle
-        #     self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
-        #     # redefine the brt function
-        #     brt_fct = lambda obstacle: (lambda t, x: jnp.minimum(x, obstacle))  # Backwards reachable TUBE!
-        #     # redefine the solver settings
-        #     self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=brt_fct(self.obstacle))
-        
-        # Refine the CBF
-        # compute new iteration of value function, warmstarted using the prior
-
+ 
         # record time of taking a step
         start_time = time.time()
 
