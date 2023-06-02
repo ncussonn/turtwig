@@ -23,9 +23,35 @@ if USE_MANUAL_CONTROLLER:
             Node(
                 package='refine_cbf',
                 executable='refine_cbf_visualization',
-            ),         
+            ),
+            Node(
+                package='refine_cbf',
+                executable='tf_stamped_2_odom',
+            ),        
         ])
+
+elif USE_UNFILTERED_POLICY:
     
+        def generate_launch_description():
+            return LaunchDescription([
+                Node(
+                    package='refine_cbf',
+                    executable='nominal_policy',
+                ),
+                Node(
+                    package='refine_cbf',
+                    executable='dynamic_programming',
+                ),
+                Node(
+                    package='refine_cbf',
+                    executable='refine_cbf_visualization',
+                ),
+                Node(
+                    package='refine_cbf',
+                    executable='tf_stamped_2_odom',
+                ),                
+            ])
+
 else:
     def generate_launch_description():
         return LaunchDescription([
@@ -45,5 +71,8 @@ else:
                 package='refine_cbf',
                 executable='refine_cbf_visualization',
             ),
-            
+            Node(
+                package='refine_cbf',
+                executable='tf_stamped_2_odom',
+            ),
         ])

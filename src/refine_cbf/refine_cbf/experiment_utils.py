@@ -145,6 +145,84 @@ def euler_from_quaternion(x,y,z,w):
 
     return roll_x, pitch_y, yaw_z # in radians
 
+def quaternion_from_euler(roll, pitch, yaw):
+    """
+    Converts Euler angles to quaternion representation.
+
+    Arguments:
+    roll -- the roll angle in radians
+    pitch -- the pitch angle in radians
+    yaw -- the yaw angle in radians
+
+    Returns:
+    A tuple representing the quaternion in the order (w, x, y, z).
+    """
+
+    cy = math.cos(yaw * 0.5)
+    sy = math.sin(yaw * 0.5)
+    cp = math.cos(pitch * 0.5)
+    sp = math.sin(pitch * 0.5)
+    cr = math.cos(roll * 0.5)
+    sr = math.sin(roll * 0.5)
+
+    qw = cr * cp * cy + sr * sp * sy
+    qx = sr * cp * cy - cr * sp * sy
+    qy = cr * sp * cy + sr * cp * sy
+    qz = cr * cp * sy - sr * sp * cy
+
+    return qw, qx, qy, qz
+
+
+def shift_quaternion_by_yaw(quaternion, yaw_shift):
+    """
+    Shifts a quaternion angle representation by a yaw rotation.
+
+    Arguments:
+    quaternion -- a tuple representing the original quaternion in the order (w, x, y, z)
+    yaw_shift -- the yaw rotation angle in radians
+
+    Returns:
+    A tuple representing the shifted quaternion in the order (w, x, y, z).
+    """
+
+    # Convert the yaw_shift to a quaternion
+    shift_quaternion = (
+        math.cos(yaw_shift / 2),  # w
+        0,                        # x
+        0,                        # y
+        math.sin(yaw_shift / 2)   # z
+    )
+
+    # Multiply the original quaternion by the shift quaternion
+    shifted_quaternion = quaternion_multiply(shift_quaternion, quaternion)
+
+    return shifted_quaternion
+
+
+def quaternion_multiply(quat1, quat2):
+    """
+    Multiplies two quaternions.
+
+    Arguments:
+    quat1 -- a tuple representing the first quaternion in the order (w, x, y, z)
+    quat2 -- a tuple representing the second quaternion in the order (w, x, y, z)
+
+    Returns:
+    A tuple representing the result of quaternion multiplication in the order (w, x, y, z).
+    """
+
+    w1, x1, y1, z1 = quat1
+    w2, x2, y2, z2 = quat2
+
+    result = (
+        w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,  # w
+        w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,  # x
+        w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,  # y
+        w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2   # z
+    )
+
+    return result
+
 def snap_state_to_grid_index(state, grid):
 
     "Snap a state to the nearest grid index and return it as a tuple."
@@ -512,7 +590,6 @@ def save_float_to_file(data, filename):
     
     with open(filename, mode) as file:
         file.write(str(data) + '\n')
-
 
 def state_feedback_config_error():
 

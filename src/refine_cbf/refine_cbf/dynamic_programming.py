@@ -104,7 +104,7 @@ class DynamicProgramming(Node):
         end_time = time.time()
 
         print("Time to take a step: ", end_time - start_time)
-
+        
         save_float_to_file(end_time - start_time, './log/time_to_take_a_step.txt')
 
         self.time -= self.dt

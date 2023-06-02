@@ -113,6 +113,9 @@ class NominalPolicy(Node):
 
         nominal_policy = compute_nominal_control(self)
 
+        # swap sign of angular velocity to match turtlebot3 convention
+        # nominal_policy = nominal_policy.at[1].set(-nominal_policy[0,1])
+
         # nominal_policy = self.grid.interpolate(self.nominal_policy_table, self.state)
         # nominal_policy = np.reshape(nominal_policy, (1, self.dyn.control_dims))
 
@@ -161,7 +164,7 @@ class NominalPolicy(Node):
         # convert quaternion to euler angle
         (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
 
-        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw])
+        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw+np.pi/2])
         
         print("Current State: ", self.state)
 

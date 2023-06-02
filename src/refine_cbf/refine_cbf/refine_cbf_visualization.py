@@ -73,7 +73,7 @@ class RefineCBF_Visualization(Node):
         # initial state
         self.state = INITIAL_STATE
 
-        self.state_sub = configure_state_feedback_subscriber(self, qos, topic_string='gazebo/odom')
+        self.state_sub = configure_state_feedback_subscriber(self, qos, topic_string=STATE_FEEDBACK_TOPIC)
 
         # cbf flag subscriber
         self.cbf_avail_sub = self.create_subscription(
@@ -292,7 +292,7 @@ class RefineCBF_Visualization(Node):
             self.goal_set_vertices = generate_circle_vertices(radius = GOAL_SET_RADIUS, center = GOAL_SET_CENTER, num_vertices = GOAL_SET_VERTEX_COUNT)
             self.publish_goal_set(self.goal_set_vertices) # publish the goal set vertices as a path message
         
-        # update the obstacle set
+        # update the obstacle set based on the current refine CBF iteration
         update_obstacle_set(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST)
 
         # publish obstacle contours as a path message
@@ -301,7 +301,6 @@ class RefineCBF_Visualization(Node):
         self.publish_obstacles(obstacle_paths)
 
         # plot safe-set contours based on the nearest theta slice to the current heading angle
-        # need to phase shift slice by pi/2 and invert sign to match the grid orientation
         theta_slice = self.grid.nearest_index(self.state)[2] 
 
         if theta_slice == GRID_RESOLUTION[2]:
@@ -338,10 +337,10 @@ class RefineCBF_Visualization(Node):
         # Message to terminal
         self.get_logger().info('Received new state information from Vicon arena.')
 
-        # convert quaternion to euler angle
+        # convert quaternion to euler angle in radians
         (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
 
-        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw])
+        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw+np.pi/2])
         
         print("Current State: ", self.state)
 

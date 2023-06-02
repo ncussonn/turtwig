@@ -192,9 +192,6 @@ class SafetyFilter(Node):
         # Solve the QP for the optimal control input
         control_input = self.diffdrive_asif(self.state, 0.0, nominal_policy)
 
-        # flip sign of angular control input to see if it fixes the problem
-        control_input[0,1] = -control_input[0,1]
-
         print("CBF-QP solved in %s seconds" % (time.time() - start_time))
 
         print("Filtered Control Input:", control_input)
@@ -286,7 +283,7 @@ class SafetyFilter(Node):
         # convert quaternion to euler angle
         (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
 
-        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw])
+        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw+np.pi/2])
         
         print("Current State: ", self.state)
 
