@@ -7,13 +7,17 @@ from refine_cbfs.dynamics import HJControlAffineDynamics
 from cbf_opt import ControlAffineDynamics, ControlAffineCBF
 from experiment_utils import *
 
+EXPERIMENT = 3
+
 # Save location of experiment data (written to in safety_filter.py)
-DATA_FILENAME = '/home/nate/turtwig_ws/log/test_dataset.txt'
+# DATA_FILENAME = '/home/nate/turtwig_ws/log/test_dataset.txt'
+DATA_FILENAME_NOMINAL_POLICY = '/home/nate/turtwig_ws/log/test_dataset_nominal_policy.txt'
 
 # Experiment 1 - Hardware:
 #DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_1_hardware.txt'
 #DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_2_hardware.txt'
 #DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_3_hardware.txt'
+#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_4_hardware.txt'
 
 # Experiment 1 - Gazebo:
 #DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_1_simulation.txt'
@@ -32,7 +36,7 @@ DATA_FILENAME = '/home/nate/turtwig_ws/log/test_dataset.txt'
 
 # Experiment 3 - Hardware:
 #DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 3/experiment_3_dataset_1_hardware.txt'
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 3/experiment_3_dataset_2_hardware.txt'
+DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 3/experiment_3_dataset_2_hardware.txt'
 #DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 3/experiment_3_dataset_3_hardware.txt'
 
 # Experiment 3 - Gazebo:
@@ -63,7 +67,7 @@ STATE_FEEDBACK_TOPIC = 'vicon/turtlebot_1/turtlebot_1'
 USE_UNFILTERED_POLICY = False
 
 # Use a manually controller for the nominal policy: True or False
-USE_MANUAL_CONTROLLER = True
+USE_MANUAL_CONTROLLER = False
 
 # TODO: Add low-level corrective controller functionality
 # Use corrective controller: True or False
@@ -82,12 +86,12 @@ THETA_SLICE = 41
 INITIAL_STATE = np.array([0.5, 1.0, -np.pi/2])
 
 # Safety Filter ROS Node Timer
-SAFETY_FILTER_TIMER_SECONDS = 0.066
-SAFETY_FILTER_QOS_DEPTH = 10
+SAFETY_FILTER_TIMER_SECONDS = 0.033
+SAFETY_FILTER_QOS_DEPTH = 100
 
 # Nominal Policy ROS Node Timer
-NOMINAL_POLICY_TIMER_SECONDS = 0.066
-NOMINAL_POLICY_QOS_DEPTH = 10
+NOMINAL_POLICY_TIMER_SECONDS = 0.033
+NOMINAL_POLICY_QOS_DEPTH = 100
 
 ## NOMINAL POLICY TABLE
 # Insert the filename of the nominal policy table numpy file, that was precomputed.
@@ -149,7 +153,7 @@ DYNAMICS_HAMILTON_JACOBI_REACHABILITY_WITH_DISTURBANCE = HJControlAffineDynamics
 ## CONTROL BARRIER FUNCTION (CBF)
 
 # Gamma value / discount rate for the CBVF - affects how quickly system can approach boundary of the safe set
-GAMMA = 0.25
+GAMMA = 0.25 # KEEP GAMMA AT 0.25 FOR ALL EXPERIMENTS
 
 # Scalar multiplier for the CBF
 SCALAR = 1.0
@@ -167,7 +171,7 @@ CBF_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/precomput
 
 #NOTE: Package can currently only handle up to 5 DISJOINT obstacles and 1 update to the obstacles
 
-EXPERIMENT = 3
+
 
 if EXPERIMENT == 1:
     # use experiment 1 obstacle set and iterations

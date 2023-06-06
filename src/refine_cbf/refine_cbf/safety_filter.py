@@ -356,8 +356,8 @@ def main():
             safety_filter.cmd_vel_publisher_.publish(msg)
 
             # if on a unix system, restore the terminal settings
-            if os.name != 'nt':
-                termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+            # if os.name != 'nt':
+            #     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
 
         # Destroy the node explicitly
         # (optional - otherwise it will be done automatically

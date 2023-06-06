@@ -20,8 +20,6 @@ import time
 from config import *
 import logging
 
-data_filename = "/home/nate/turtwig_ws/log/nom_policy_experiment_data.txt"
-
 # import proper modules based on the operating system for correct functions and methods 
 # for managing console or terminal I/O
 # 'nt' is the name of the operating system for Windows
@@ -111,7 +109,7 @@ class NominalPolicy(Node):
 
         # Get value of the nominal policy at the current state using a precomputed nominal policy table
 
-        nominal_policy = compute_nominal_control(self)
+        self.nominal_policy = compute_nominal_control(self)
 
         # swap sign of angular velocity to match turtlebot3 convention
         # nominal_policy = nominal_policy.at[1].set(-nominal_policy[0,1])
@@ -119,24 +117,28 @@ class NominalPolicy(Node):
         # nominal_policy = self.grid.interpolate(self.nominal_policy_table, self.state)
         # nominal_policy = np.reshape(nominal_policy, (1, self.dyn.control_dims))
 
-        print("Nominal Policy: ", nominal_policy)
+        print("Nominal Policy: ", self.nominal_policy)
         
         # Publish the Nominal Policy
         ############################################
 
         # Formulate the message to be published
         msg = Twist()
-        msg.linear.x = float(nominal_policy[0,0]) # linear velocity
+        msg.linear.x = float(self.nominal_policy[0,0]) # linear velocity
         msg.linear.y = 0.0
         msg.linear.z = 0.0
         msg.angular.x = 0.0
         msg.angular.y = 0.0
-        msg.angular.z = float(nominal_policy[0,1]) # angular velocity
+        msg.angular.z = float(self.nominal_policy[0,1]) # angular velocity
 
         # publish the control input
         self.nom_pol_publisher_.publish(msg)
         publish_message = create_nominal_policy_publishing_message(USE_UNFILTERED_POLICY)
         self.get_logger().info(publish_message)
+
+        # Save visualization data
+        ############################################
+        self.data_logger.append(x=self.state[0], y=self.state[1], theta=self.state[2], v_nom=self.nominal_policy[0,0], omega_nom=self.nominal_policy[0,1])
 
     ##################################################
     ################### SUBSCRIBERS ##################
@@ -199,6 +201,8 @@ def main():
         msg.angular.z = 0.0
 
         nominal_policy.nom_pol_publisher_.publish(msg)
+        nominal_policy.data_logger.save_data(DATA_FILENAME_NOMINAL_POLICY)
+        print("Data saved to: ", DATA_FILENAME_NOMINAL_POLICY)
 
     finally:
 

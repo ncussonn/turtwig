@@ -250,7 +250,7 @@ class ParameterStorage:
         self.v_nom = np.array([])
         self.omega_nom = np.array([])
 
-    def append(self, x, y, theta, safety_value, v, omega, v_nom, omega_nom):
+    def append(self, x=0., y=0., theta=0., safety_value=0., v=0., omega=0., v_nom=0., omega_nom=0.):
         self.x = np.append(self.x, x)
         self.y = np.append(self.y, y)
         self.theta = np.append(self.theta, theta)
@@ -315,6 +315,15 @@ class ParameterStorage:
         plt.xlabel('Time step')
         plt.ylabel('Value')
         plt.show() 
+
+    def plot_nominal(self):
+        fig, axs = plt.subplots(1, 2, figsize=(14, 4))
+        axs[0].plot(self.v_nom)
+        axs[0].set_title('V Nominal')
+        axs[1].plot(self.omega_nom)
+        axs[1].set_title('Omega Nominal')
+        plt.tight_layout()
+        plt.show()
 
     def plot_all(self):
         fig, axs = plt.subplots(2, 4, figsize=(14, 8))
