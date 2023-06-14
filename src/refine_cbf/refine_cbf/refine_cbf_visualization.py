@@ -94,7 +94,7 @@ class RefineCBF_Visualization(Node):
             self.iteration+=1
 
             # Halt the robot to prevent unsafe behavior while the CBF is updated
-            self.get_logger().info('New CBF received, stopping robot and loading new CBF')
+            self.get_logger().info('New CBF received, loading new CBF')
 
             # load new tabular cbf
             self.cbf = jnp.load('./log/cbf.npy')

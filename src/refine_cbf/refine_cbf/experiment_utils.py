@@ -712,7 +712,6 @@ def introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST):
     # redefine the solver settings
     self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=brt_fct(self.obstacle))
 
-
 def update_obstacle_set(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST):
 
     # introduce a new constraint set at specified iteration

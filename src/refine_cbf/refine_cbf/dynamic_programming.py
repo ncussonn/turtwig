@@ -64,6 +64,13 @@ class DynamicProgramming(Node):
         # a depth of 10 suffices in most cases, but this can be increased if needed
         qos = QoSProfile(depth=10)
 
+        # # DELETE AFTER CBF CREATION
+        # # redefine initial cbf to be this one
+        if EXPERIMENT == 2:
+            #self.cbf = np.load('/home/nate/thesis/Visualization Code/full_sdf.npy')
+            self.cbf = np.load('/home/nate/thesis/Visualization Code/obstacle_1_2_sdf.npy')
+        # self.i = 0
+
     ##################################################
     ################### PUBLISHERS ###################
     ##################################################
@@ -90,15 +97,50 @@ class DynamicProgramming(Node):
 
         # keep track of number of iterations of the dynamic programming loop
         self.iteration += 1
-
+ 
         # check if a new obstacle should be introduced at the current iteration, and if so, update the CBF using it
         introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST)
- 
+
         # record time of taking a step
         start_time = time.time()
 
-        # Iterating the CBVF using HJ Reachability using prior CBVF to warmstart the Dynamic Programming
-        self.cbf = hj.step(self.solver_settings, self.dyn_hjr, self.grid, self.time, self.cbf, self.target_time, progress_bar=True)
+        if EXPERIMENT == 2:
+            
+            # To create SDF: Delete after experiments are done
+            #self.cbf = np.load('/home/nate/thesis/Visualization Code/full_sdf.npy')
+
+            if self.iteration == OBSTACLE_ITERATION_LIST[0]:
+                
+                # redefine cbf to be this one
+                self.cbf = np.load('/home/nate/thesis/Visualization Code/obstacle_2_2_sdf.npy')
+
+            elif self.iteration == OBSTACLE_ITERATION_LIST[1]:
+
+                # redefine cbf to be this one
+                self.cbf = np.load('/home/nate/thesis/Visualization Code/obstacle_3_2_sdf.npy')
+
+            elif self.iteration == OBSTACLE_ITERATION_LIST[2]:
+
+                # redefine cbf to be this one
+                self.cbf = np.load('/home/nate/thesis/Visualization Code/obstacle_4_2_sdf.npy')
+
+            elif self.iteration == OBSTACLE_ITERATION_LIST[3]:
+
+                # redefine cbf to be this one
+                self.cbf = np.load('/home/nate/thesis/Visualization Code/obstacle_5_2_sdf.npy')
+
+            # For CBF creation, delete after experiments are done
+            # time.sleep(0.5)
+            # # Iterating the CBVF using HJ Reachability using prior CBVF to warmstart the Dynamic Programming
+            # self.cbf = hj.step(self.solver_settings, self.dyn_hjr, self.grid, self.time, self.cbf, self.target_time, progress_bar=True)
+
+            # else:
+            time.sleep(0.5) # simulate time for the dispersal of obstacles
+            pass
+
+        else:
+            # Iterating the CBVF using HJ Reachability using prior CBVF to warmstart the Dynamic Programming
+            self.cbf = hj.step(self.solver_settings, self.dyn_hjr, self.grid, self.time, self.cbf, self.target_time, progress_bar=True)
 
         # record time of taking a step
         end_time = time.time()

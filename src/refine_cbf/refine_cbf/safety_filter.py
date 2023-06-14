@@ -208,7 +208,7 @@ class SafetyFilter(Node):
             logging.debug('Safety Value: "%s"' % self.safety_value)
             logging.debug('Nominal Policy: "%s"' % self.nominal_policy)
 
-            # overwrite control for this time step to prevent a crash
+            # overwrite control for this time step to prevent program from crashing
             control_input = np.array([[U_MIN[0], 0.0]])
 
         # # Add the corrective control input to the optimal control input
