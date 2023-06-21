@@ -303,6 +303,7 @@ class RefineCBF_Visualization(Node):
         # plot safe-set contours based on the nearest theta slice to the current heading angle
         theta_slice = self.grid.nearest_index(self.state)[2] 
 
+        # TODO: fix this hacky solution
         if theta_slice == GRID_RESOLUTION[2]:
             # wrap theta slice to 0, as max grid point index does not exist
             theta_slice = 0
@@ -359,8 +360,6 @@ def main():
         f = open('./log/cbf_to_save.pkl', 'wb')
         pickle.dump(refinecbf_visualization.cbf_to_save, f)
         f.close()
-
-        
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically

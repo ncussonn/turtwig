@@ -228,9 +228,11 @@ class SafetyFilter(Node):
         msg.angular.y = 0.0
         msg.angular.z = float(control_input[0,1]) # angular velocity
 
-        # publish the optimal control input
-        self.cmd_vel_publisher_.publish(msg)
-        self.get_logger().info('Publishing optimal safe control input over topic /cmd_vel')
+        # publish the optimal control input if using the safety filter
+        if USE_UNFILTERED_POLICY is False:
+
+            self.cmd_vel_publisher_.publish(msg)
+            self.get_logger().info('Publishing optimal safe control input over topic /cmd_vel')
 
         print("Time to run safety filter: %s seconds" % (time.time() - ctrl_start_time))
 
@@ -245,21 +247,27 @@ class SafetyFilter(Node):
     # Boolean flag availability subscription
     def cbf_sub_callback(self, msg):
 
-        self.get_logger().info('New CBF Available: "%s"' % msg.data)
+        if USE_REFINECBF is True:
 
-        if msg.data is True:
-            
-            # Halt the robot to prevent unsafe behavior while the CBF is updated
-            self.get_logger().info('New CBF received, loading new CBF')
+            self.get_logger().info('New CBF Available: "%s"' % msg.data)
 
-            # load new tabular cbf
-            self.cbf = jnp.load('./log/cbf.npy')
+            if msg.data is True:
+                
+                # Halt the robot to prevent unsafe behavior while the CBF is updated
+                self.get_logger().info('New CBF received, loading new CBF')
 
-            # Update the tabular cbf
-            self.tabular_cbf.vf_table = np.array(self.cbf)
+                # load new tabular cbf
+                self.cbf = jnp.load('./log/cbf.npy')
 
-            # Assign the tabular cbf to the diffdrive asif
-            self.diffdrive_asif.cbf = self.tabular_cbf
+                # Update the tabular cbf
+                self.tabular_cbf.vf_table = np.array(self.cbf)
+
+                # Assign the tabular cbf to the diffdrive asif
+                self.diffdrive_asif.cbf = self.tabular_cbf
+
+        else:
+            # skip the CBF update
+            pass
 
     # State Subscription
     def state_sub_callback(self, msg):
@@ -355,13 +363,13 @@ def main():
 
             safety_filter.cmd_vel_publisher_.publish(msg)
 
-            # if on a unix system, restore the terminal settings
-            # if os.name != 'nt':
-            #     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+                # if on a unix system, restore the terminal settings
+                # if os.name != 'nt':
+                #     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
 
-        # Destroy the node explicitly
-        # (optional - otherwise it will be done automatically
-        # when the garbage collector destroys the node object)
+            # Destroy the node explicitly
+            # (optional - otherwise it will be done automatically
+            # when the garbage collector destroys the node object)
         safety_filter.destroy_node()
         rclpy.shutdown()
 

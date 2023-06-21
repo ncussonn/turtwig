@@ -102,20 +102,11 @@ class NominalPolicy(Node):
         # Compute Nominal Control
         ############################################
 
-        # # If using something other than nominal policy table for nominal policy, set the flag to True
-        # use_external_nom_policy = False
-
         # Offline, a nominal policy table was computed for every grid point in the state space.
 
-        # Get value of the nominal policy at the current state using a precomputed nominal policy table
+        # Get value of the nominal policy at the current state using a precomputed nominal policy table (nominal policy will be interpolated)
 
         self.nominal_policy = compute_nominal_control(self)
-
-        # swap sign of angular velocity to match turtlebot3 convention
-        # nominal_policy = nominal_policy.at[1].set(-nominal_policy[0,1])
-
-        # nominal_policy = self.grid.interpolate(self.nominal_policy_table, self.state)
-        # nominal_policy = np.reshape(nominal_policy, (1, self.dyn.control_dims))
 
         print("Nominal Policy: ", self.nominal_policy)
         

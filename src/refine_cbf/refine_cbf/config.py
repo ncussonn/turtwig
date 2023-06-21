@@ -10,24 +10,19 @@ from experiment_utils import *
 EXPERIMENT = 1
 
 # Save location of experiment data (written to in safety_filter.py)
-#DATA_FILENAME = '/home/nate/turtwig_ws/log/test_dataset.txt'
+DATA_FILENAME = '/home/nate/turtwig_ws/log/test_dataset.txt'
+#DATA_FILENAME = '/home/nate/turtwig_ws/log/safety_agnostic_policy.txt'
+#DATA_FILENAME = '/home/nate/turtwig_ws/log/safety_filtered_policy_gamma_10.txt'
 DATA_FILENAME_NOMINAL_POLICY = '/home/nate/turtwig_ws/log/test_dataset_nominal_policy.txt'
 
 # Experimetn 1.2 - Gazebo:
-DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_1_simulation_2.txt'
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_2_simulation_2.txt'
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_3_simulation_2.txt'
+#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 1/experiment_1_dataset_1_simulation_3.txt'
 
 # Experiment 2.2 - Gazebo:
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 2/experiment_2_dataset_1_simulation_2.txt'
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 2/experiment_2_dataset_2_simulation_2.txt'
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 2/experiment_2_dataset_3_simulation_2.txt'
+#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 2/experiment_2_dataset_1_simulation_3.txt'
 
 # Experiment 3.2 - Gazebo:
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 3/experiment_3_dataset_1_simulation_2.txt'
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 3/experiment_3_dataset_2_simulation_2.txt'
-#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 3/experiment_3_dataset_3_simulation_2.txt'
-
+#DATA_FILENAME = '/home/nate/thesis/Datasets/Experiment 3/experiment_3_dataset_1_simulation_3.txt'
 
 # Save location of iteration step data (written to in dynamic_programming.py)
 ITERATION_STEP_FILENAME = '/home/nate/turtwig_ws/log/test_iteration_step.txt'
@@ -46,6 +41,7 @@ STATE_FEEDBACK_TOPIC = 'gazebo/odom'
 # Use unfiltered policy (i.e. only nominal/safety agnostic control applied): True or False
 # used in the refine_cbf_launch.py and nominal_policy.py
 # If True, this will publish the /cmd_vel topic straight from the nominal policy node instead of the safety filter node
+# Run data will not be saved to a the typical data file if this is True (will be found in DATA_FILENAME_NOMINAL_POLICY). TODO: Make it so this isn't the case.
 USE_UNFILTERED_POLICY = False
 
 # Use a manually controller for the nominal policy: True or False
@@ -55,7 +51,8 @@ USE_MANUAL_CONTROLLER = False
 # Use corrective controller: True or False
 # USE_CORRECTIVE_CONTROLLER = False
 
-# Refine the CBF: True or False TODO: Check if this functionality still works
+# Refine the CBF: True or False
+# If this is False, the final converged CBF will be used in the safety filter and not refined
 USE_REFINECBF = True
 
 # Refine CBF Iteration Time Step (dt)
