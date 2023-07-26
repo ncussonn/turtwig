@@ -7,9 +7,9 @@
 
 import numpy as np
 
-class Obstacles():
+class Obstacles:
+    """Class representing different sets of obstacles used in the experiment."""
 
-    # attributes
     # 1st (Initial) set of obstacles
     OBSTACLES_1 = {
         "circle": {
@@ -24,8 +24,9 @@ class Obstacles():
         },
         "iteration": 0,
     }
+
     # 2nd set of obstacles
-    OBSTACLES_2  = {
+    OBSTACLES_2 = {
         "circle": {
             "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
         },
@@ -49,28 +50,16 @@ class Obstacles():
         "iteration": 20,
     }
 
-    # Add more obstacles here, if necessary.
+    # Add more obstacles here if necessary.
 
-
-
-
-
-    # Methods
     def get_obstacle_list(self):
-        # Get all attributes defined in the class
+        """Get all attributes defined in the class starting with 'OBSTACLES_'."""
         all_attributes = vars(type(self))
-
-        # Filter the attributes that start with 'OBSTACLES_'
         obstacle_attributes = [value for key, value in all_attributes.items() if key.startswith('OBSTACLES_')]
-
         return obstacle_attributes
-    
+
     def get_iteration_list(self):
-        # Get all obstacle attributes
+        """Get the 'iteration' values from the obstacle dictionaries."""
         obstacle_attributes = self.get_obstacle_list()
-
-        # Extract the "iteration" values from the obstacle dictionaries
         iteration_list = [obstacle["iteration"] for obstacle in obstacle_attributes]
-
         return iteration_list
-        
