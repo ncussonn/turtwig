@@ -1,30 +1,11 @@
 # Configuration file used to define key parameters for RefineCBF Experimentation
 
-print("Loading Config File...")
-
-# Generic Python Imports
 import numpy as np
 import jax.numpy as jnp
-import time
-import matplotlib.pyplot as plt
-import pickle
-import logging
-
-# ROS Imports
-import rclpy
-from rclpy.qos import QoSProfile
-from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
-from nav_msgs.msg import Odometry, Path
-from std_msgs.msg import Bool, Float32
-
-# RefineCBF Imports
 import refine_cbfs
-import hj_reachability as hj
 from refine_cbfs.dynamics import HJControlAffineDynamics
-from cbf_opt import ControlAffineDynamics, ControlAffineCBF, ControlAffineASIF
-from refine_cbf.utils import *
-from refine_cbf.experiment_obstacles import Obstacles
-
+from cbf_opt import ControlAffineDynamics, ControlAffineCBF
+from .experiment_utils import *
 
 # Type of system being controlled: 'DIFF_DRIVE' or 'QUADROTOR'
 # NOTE: Unused right now
@@ -76,13 +57,14 @@ NOMINAL_POLICY_QOS_DEPTH = 10
 ## NOMINAL POLICY TABLE
 # Insert the filename of the nominal policy table numpy file, that was precomputed.
 NOMINAL_POLICY_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid_goal_1pt5x_1pt0y_reduced_omega_bound.npy'
+#NOMINAL_POLICY_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid_goal_1pt5x_1y.npy'
 
 ## HAMILTON JACOBI REACHABILITY GRID
 
 # Density of grid
 # tuple of size equal to state space dimension that defines the number of grid points in each dimension
 # For example, a differential drive dynamics robot will have a 3D state space (x, y, theta)
-# NOTE: This resolution must be the same as the resolution used to generate the nominal policy table (if using a nominal policy table)
+# IMPORTANT NOTE: This resolution must be the same as the resolution used to generate the nominal policy table (if using a nominal policy table)
 GRID_RESOLUTION = (61, 61, 61)
 
 # Lower and upper bounds of the discretized state space
@@ -91,26 +73,27 @@ GRID_RESOLUTION = (61, 61, 61)
 GRID_LOWER = np.array([0., 0., -np.pi])
 GRID_UPPER = np.array([2., 2., np.pi])
 
+
 # Periodic dimensions
 # A single integer or tuple of integers denoting which dimensions are periodic in the case that
 # the `boundary_conditions` are not explicitly provided as input.
 # For example, a differential drive dynamics robot will have a 3D state space (x, y, theta), where theta is periodic, which is the third dimension (index 2)
 PERIODIC_DIMENSIONS = 2
 
-# State Domain
-STATE_DOMAIN = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER)
 
-# State Space Grid
-GRID = hj.Grid.from_lattice_parameters_and_boundary_conditions(STATE_DOMAIN, GRID_RESOLUTION, periodic_dims=PERIODIC_DIMENSIONS)
+# TODO: DELETE THIS?
+GRID = hj.Grid.from_lattice_parameters_and_boundary_conditions(hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER), GRID_RESOLUTION, periodic_dims=PERIODIC_DIMENSIONS)
+
 
 ## CONTROL SPACE
 
 # Control space parameters
 # two arrays with size of the control space dimension that define the lower and upper bounds of the control space
 # For instance, a differential drive dynamics robot will have a 2D control space (v, omega) and if
-# using a Turtlebot3 Burger, a control space could be bounded by v_min = 0.1, v_max = 0.21, omega_max/omega_min = +/- 1.3
-# NOTE: The full control range of a TB3 burger is v_min = 0.0, v_max = 0.21, omega_max/omega_min = +/- 2.63
-#       However, if the resulting controller is bang-bang-like, the angular velocity bound must be dropped to around 1.3 rad/s magnitude.
+# using a Turtlebot3 Burger, the control space will be bounded by v_min = 0.1, v_max = 0.22, omega_max/omega_min = +/- 2.63
+
+#U_MIN = np.array([0.1, -2.63])
+#U_MAX = np.array([0.21, 2.63])
 
 U_MIN = np.array([0.1, -1.3])
 U_MAX = np.array([0.21, 1.3])
@@ -121,13 +104,13 @@ U_MAX = np.array([0.21, 1.3])
 # two arrays with size of the disturbance space dimension that define the lower and upper bounds of the disturbance space
 # For instance, a differential drive dynamics robot will have a 2D disturbance space (v_disturbance, omega_disturbance) and if
 # using a Turtlebot3 Burger, the disturbance space will be bounded by v_disturbance_min = -0.1, v_disturbance_max = 0.1, omega_disturbance_max/omega_disturbance_min = +/- 0.1
-# NOTE: Unused in this package, but is here if needed.
 
 W_MIN = np.array([-0.1, -0.1])
 W_MAX = np.array([0.1, 0.1])
 
 ## DYNAMICS
 
+# TODO: Allow dynamics to be changed by keyword argument instead of direct assignment, such as "diff_drive", "dubins_car", etc.
 DYNAMICS = DiffDriveDynamics({"dt": 0.05}, test=False)  # dt is an arbitrary value choice, as the dynamics object requires a dt 
                                                         # value for its constructor argument but it is not used for this package
 
@@ -140,13 +123,13 @@ DYNAMICS_HAMILTON_JACOBI_REACHABILITY_WITH_DISTURBANCE = HJControlAffineDynamics
 
 ## CONTROL BARRIER FUNCTION (CBF)
 
-# Gamma value / discount rate for the CBVF - affects how quickly system can exponentially approach boundary of the safe set
-# A higher gamma value will make the safety control more aggressive, while a lower gamma value will make the safety control more conservative.
-# With gamma = 0 resulting in extreme conservativeness, where the resulting trajectories will not take a form which drops below the initial safety value.
-GAMMA = 0.25
+# Gamma value / discount rate for the CBVF - affects how quickly system can approach boundary of the safe set
+# A higher gamma value will make the safety control more conservative, while a lower gamma value will make the safety control more aggressive
+# With gamma =0 resulting in least-restrictive control
+GAMMA = 0.25 # KEEP GAMMA AT 0.25 FOR ALL EXPERIMENTS
 
 # Scalar multiplier for the CBF - linear multiplier for values of the CBF.
-# NOTE: Should rarely need to change this, but it is here if needed.
+# Should rarely need to change this, but it is here if needed.
 CBF_SCALAR = 1.0
 
 # Initial CBF Parameters
@@ -160,89 +143,81 @@ CBF_FILENAME = '/home/nate/thesis/Visualization Code/safety_filter_example_cbf.n
 
 ## CONSTRAINT SET / OBSTACLES
 
-# NOTE: Example set of obstacles. At the designated iteration 
+# Initial set of obstacles
+OBSTACLES_1 = {
+    "circle": {
+        "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
+    },
+    "rectangle": {
+        "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
+        "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
+    },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
+# 2nd set of obstacles
+OBSTACLES_2  = {
+    "circle": {
+        "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
+    },
+    "rectangle": {
+        "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
+        "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
+    },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
 
-# # Initial set of obstacles
-# OBSTACLES_1 = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
-# # 2nd set of obstacles
-# OBSTACLES_2  = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
+# 3rd set of obstacles
+OBSTACLES_3 = {
+    "circle": {
+        "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
+    },
+    "rectangle": {
+        "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
+        "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
+    },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
 
-# # 3rd set of obstacles
-# OBSTACLES_3 = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
+# 4th set of obstacles
+OBSTACLES_4 = {
+    "circle": {
+        "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
+    },
+    "rectangle": {
+        "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
+        "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
+    },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
 
-# # 4th set of obstacles
-# OBSTACLES_4 = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
+# 5th set of obstacles
+OBSTACLES_5 = {
+    "circle": {
+        "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
+    },
+    "rectangle": {
+        "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
+        "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
+    },
+    "bounding_box": {
+        "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
+    },
+}
 
-# # 5th set of obstacles
-# OBSTACLES_5 = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
-
-OBSTACLES = Obstacles()
-
-# List of obstacle sets
-OBSTACLE_LIST = OBSTACLES.get_obstacle_list()
-
-# When to update obstacles, size of the list must be n-1, where n is the number of obstacle sets.
-OBSTACLE_ITERATION_LIST = OBSTACLES.get_iteration_list()
-#OBSTACLE_ITERATION_LIST = [10, 20, 30, 40]
+# When to update obstacles, size of the list must be n-1, where n is the number of obstacle sets
+OBSTACLE_ITERATION_LIST = [10, 20, 30, 40]
     
 # define the obstacle dictionary list
 # each element in the list is a dictionary of obstacles
-#OBSTACLE_LIST = [OBSTACLES_1, OBSTACLES_2, OBSTACLES_3, OBSTACLES_4, OBSTACLES_5]
+OBSTACLE_LIST = [OBSTACLES_1, OBSTACLES_2, OBSTACLES_3, OBSTACLES_4, OBSTACLES_5]
 
 # padding around the obstacle in meters
 # float that inflates the obstacles by a certain amount using Minkoswki sum

@@ -1,26 +1,11 @@
+#!/usr/bin/env python3
+
 # Low Level Controller Node for RefineCBF
 
-import sys
-import os
-import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile
-import numpy as np
-import jax.numpy as jnp
-from std_msgs.msg import Float32
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
-from experiment_utils import *
-import logging
+# NOTE: Unused, would be additive control to the nominal policy.
 
-# import proper modules based on the operating system for correct functions and methods 
-# for managing console or terminal I/O
-# 'nt' is the name of the operating system for Windows
-if os.name == 'nt':
-    import msvcrt
-else:
-    import termios
-    import tty
+from rclpy.node import Node
+from refine_cbf.config import *
 
 class LowLevelController(Node):
     
@@ -142,10 +127,6 @@ class LowLevelController(Node):
 
 def main():
 
-    settings = None
-    if os.name != 'nt':
-        settings = termios.tcgetattr(sys.stdin)
-
     rclpy.init()    
     low_level_ctrl = LowLevelController()
 
@@ -169,10 +150,6 @@ def main():
         msg.angular.z = 0.0
 
         low_level_ctrl.control_publisher_.publish(msg)
-
-        # if on a unix system, restore the terminal settings
-        if os.name != 'nt':
-            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically

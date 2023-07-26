@@ -1,42 +1,17 @@
+#!/usr/bin/env python3
+
 # Subscribes to Boolean Publisher and State Publisher
 # Publishes Twist Message
 
-# TODO FIND OUT HOW TO GENERALIZE PACKAGE SO THIS CAN BE REMOVED
-import sys
-sys.path.insert(0, '/home/nate/turtwig_ws/src/refine_cbf/refine_cbf')   # for experiment_utils.py
-
-import os
-import rclpy
-import numpy as np
-import jax.numpy as jnp
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
-from std_msgs.msg import Bool, Float32
-from geometry_msgs.msg import Twist, TransformStamped
-from nav_msgs.msg import Odometry
-from cbf_opt import ControlAffineDynamics, ControlAffineCBF, ControlAffineASIF
-import refine_cbfs
-from refine_cbfs.dynamics import HJControlAffineDynamics 
-import hj_reachability as hj
-import time
-from config import *
-import logging
-
-# import proper modules based on the operating system for correct functions and methods 
-# for managing console or terminal I/O
-# 'nt' is the name of the operating system for Windows
-if os.name == 'nt':
-    import msvcrt
-else:
-    import termios
-    import tty
+from refine_cbf.config import *
 
 class SafetyFilter(Node):
 
     '''
     Safety Filter Node
 
-    - subscribed topics: \gazebo\odom, \cbf_availability, \odom, \nom_policy, \vicon_odom
+    - subscribed topics: \gazebo\odom (or \odom or \vicon_odom), \cbf_availability, \nom_policy
     - published topics: \cmd_vel, \safety_value
 
     '''
@@ -71,17 +46,15 @@ class SafetyFilter(Node):
         # Active Set Invariance Filter (ASIF) With an initial CBF
         ###############################################
 
-        # load the cbf (safety value function)
-        # shouldn't need to load if just using the initial value function
-        self.cbf = jnp.load(CBF_FILENAME)               
-        
         if USE_REFINECBF is True:
             # Use the initial value function to generate the tabular CBF for safety filter
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
-            #self.tabular_cbf.vf_table = np.array(self.cbf[0]) # use time index 0 for initial cbf
             self.tabular_cbf.vf_table = INITIAL_CBF
         else: 
+            # load the final value function from the previous run
+            self.cbf = jnp.load(CBF_FILENAME) 
             # Use the final value function to generate the tabular CBF for safety filter
+                
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
             self.tabular_cbf.vf_table = np.array(self.cbf[-1])
 
@@ -109,8 +82,8 @@ class SafetyFilter(Node):
             'safety_value',
             qos)
 
-        # callback timer (how long to wait before running callback function)
-        timer_period = SAFETY_FILTER_TIMER_SECONDS # 0.099#0.033 # seconds (equivalent to about ~20Hz, same as odometry/IMU update rate)
+        # callback timer (how long to wait before running callback functions)
+        timer_period = SAFETY_FILTER_TIMER_SECONDS
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
         # cbf flag subscriber
@@ -123,6 +96,9 @@ class SafetyFilter(Node):
 
         # STATE FEEDBACK
 
+        # create state feedback subscriber callback function
+        create_sub_callback(self.__class__, STATE_FEEDBACK_TOPIC)
+
         # configure the state subscriber based on the state feedback source (simulation, real turtlebot3 burger, or vicon)
         self.state_sub = configure_state_feedback_subscriber(self, qos, STATE_FEEDBACK_TOPIC)
         
@@ -132,29 +108,15 @@ class SafetyFilter(Node):
             'nom_policy',
             self.nom_policy_sub_callback,
             qos)
-        
-        # # corrective control subscription
-        # self.corr_ctrl_sub = self.create_subscription(
-        #     Twist,
-        #     'corrective_control',
-        #     self.corr_ctrl_sub_callback,
-        #     qos)
 
         # prevent unused variable warnings
         self.cbf_avail_sub    
         self.state_sub
         self.nom_policy_sub
-        # self.corr_ctrl_sub
 
         # Data saving and visualization object
         self.data_logger = ParameterStorage()
-
-    '''Callback Functions'''
     
-    ##################################################
-    ################### PUBLISHERS ###################
-    ##################################################
-
     def publish_safety_value(self):
             
         # Safety Value at Current State (Positive = Safe, Negative/Zero = Unsafe)
@@ -168,9 +130,10 @@ class SafetyFilter(Node):
         self.safety_value_publisher_.publish(msg)
         self.get_logger().info('Publishing safety value: "%s"' % msg.data)
 
+    '''Main Loop'''
     def timer_callback(self):
 
-        # This callback node needs to be AS FAST AS POSSIBLE. Time delays between control inputs can lead to unsafe behavior.
+        # This callback node needs to be AS FAST AS POSSIBLE. Input delays between control inputs can lead to unsafe behavior.
 
         # time node
         ctrl_start_time = time.time()
@@ -211,11 +174,6 @@ class SafetyFilter(Node):
             # overwrite control for this time step to prevent program from crashing
             control_input = np.array([[U_MIN[0], 0.0]])
 
-        # # Add the corrective control input to the optimal control input
-        # if self.use_corr_control is True:
-        #     # Add the corrective control input to the optimal control input
-        #     control_input = control_input + self.corrective_control
-
         # Publish the Optimal Control Input
         ############################################
 
@@ -228,11 +186,9 @@ class SafetyFilter(Node):
         msg.angular.y = 0.0
         msg.angular.z = float(control_input[0,1]) # angular velocity
 
-        # publish the optimal control input if using the safety filter
-        if USE_UNFILTERED_POLICY is False:
-
-            self.cmd_vel_publisher_.publish(msg)
-            self.get_logger().info('Publishing optimal safe control input over topic /cmd_vel')
+        # publish the control input
+        self.cmd_vel_publisher_.publish(msg)
+        self.get_logger().info('Publishing optimal safe control input over topic /cmd_vel')
 
         print("Time to run safety filter: %s seconds" % (time.time() - ctrl_start_time))
 
@@ -249,12 +205,9 @@ class SafetyFilter(Node):
 
         if USE_REFINECBF is True:
 
-            self.get_logger().info('New CBF Available: "%s"' % msg.data)
-
             if msg.data is True:
-                
-                # Halt the robot to prevent unsafe behavior while the CBF is updated
-                self.get_logger().info('New CBF received, loading new CBF')
+
+                self.get_logger().info('New CBF is available, loading new CBF')
 
                 # load new tabular cbf
                 self.cbf = jnp.load('./log/cbf.npy')
@@ -269,32 +222,6 @@ class SafetyFilter(Node):
             # skip the CBF update
             pass
 
-    # State Subscription
-    def state_sub_callback(self, msg):
-
-        # Message to terminal
-        self.get_logger().info('Received new state information.')
-
-        # convert quaternion to euler angle
-        (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
-
-        self.state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
-        
-        print("Current State: ", self.state)
-
-    # State Subscription for TransformStamped
-    def state_sub_callback_vicon(self, msg):
-
-        # Message to terminal
-        self.get_logger().info('Received new state information from Vicon arena.')
-
-        # convert quaternion to euler angle
-        (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
-
-        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw+np.pi/2])
-        
-        print("Current State: ", self.state)
-
     # Nominal Policy subscription
     def nom_policy_sub_callback(self, msg):
 
@@ -305,80 +232,37 @@ class SafetyFilter(Node):
         
         print("Current Nominal Policy: ", self.nominal_policy)
 
-    # # Corrective Control subscription
-    # def corr_ctrl_sub_callback(self, msg):
-
-    #     # Message to terminal
-    #     self.get_logger().info('Received new corrective control.')
-
-    #     self.corrective_control = np.array([msg.linear.x, msg.angular.z])        
-        
-    #     print("Current Corrective Control: ", self.corrective_control)
-
 def main():
 
-    # Don't use the safety filter if the unfiltered policy is being used (i.e. main will contain no actions)
-    if USE_UNFILTERED_POLICY is False:
+    # initialize the node
+    rclpy.init()    
+    safety_filter = SafetyFilter()
 
-        settings = None
-        # if os.name != 'nt':
-        #     settings = termios.tcgetattr(sys.stdin)
+    try:
+        safety_filter.get_logger().info("Starting saftey filter node, shut down with CTRL+C")
+        rclpy.spin(safety_filter)
 
-        rclpy.init()    
-        safety_filter = SafetyFilter()
+    except KeyboardInterrupt:
+        safety_filter.get_logger().info('Keyboard interrupt, shutting down.\n')
 
-        try:
-            safety_filter.get_logger().info("Starting saftey filter node, shut down with CTRL+C")
-            rclpy.spin(safety_filter)
+        # shut down motors
+        msg = create_shutdown_message()
+        safety_filter.cmd_vel_publisher_.publish(msg)
 
-        except KeyboardInterrupt:
-            safety_filter.get_logger().info('Keyboard interrupt, shutting down.\n')
+        # save data to file
+        safety_filter.data_logger.save_data(DATA_FILENAME)
 
-            # shut down motors
-            msg = Twist()
-            msg.linear.x = 0.0
-            msg.linear.y = 0.0
-            msg.linear.z = 0.0
+    finally:
 
-            msg.angular.x = 0.0
-            msg.angular.y = 0.0
-            msg.angular.z = 0.0
+        # shut down motors
+        msg = create_shutdown_message()
+        safety_filter.cmd_vel_publisher_.publish(msg)
 
-            safety_filter.cmd_vel_publisher_.publish(msg)
-
-            # save data to file
-            safety_filter.data_logger.save_data(DATA_FILENAME)
-
-        finally:
-
-            # shut down motors
-            msg = Twist()
-            msg.linear.x = 0.0
-            msg.linear.y = 0.0
-            msg.linear.z = 0.0
-
-            msg.angular.x = 0.0
-            msg.angular.y = 0.0
-            msg.angular.z = 0.0
-
-            safety_filter.cmd_vel_publisher_.publish(msg)
-
-                # if on a unix system, restore the terminal settings
-                # if os.name != 'nt':
-                #     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
-
-            # Destroy the node explicitly
-            # (optional - otherwise it will be done automatically
-            # when the garbage collector destroys the node object)
-        safety_filter.destroy_node()
-        rclpy.shutdown()
-
-    elif USE_UNFILTERED_POLICY is True:
-        print("Bypassing Safety Filter, node will not be started")
-
-    else:
-        print("Error: USE_UNFILTERED_POLICY must be set to True or False")
-
+        # Destroy the node explicitly
+        # (optional - otherwise it will be done automatically
+        # when the garbage collector destroys the node object)
+    safety_filter.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

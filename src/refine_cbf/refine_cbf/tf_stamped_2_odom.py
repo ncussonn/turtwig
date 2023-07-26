@@ -1,14 +1,10 @@
+#!/usr/bin/env python3
+
+# for use in the Vicon arena
 # converts a topic with a transform stamped message type to odom message type
 
-# TODO FIND OUT HOW TO GENERALIZE PACKAGE SO THIS CAN BE REMOVED
-import sys
-sys.path.insert(0, '/home/nate/turtwig_ws/src/refine_cbf/refine_cbf')   # for experiment_utils.py and config.py
-
-import rclpy
-import numpy as np
 from rclpy.node import Node
-from config import *
-from rclpy.qos import QoSProfile
+from refine_cbf.config import *
 
 class TF_Stamped_2_Odom(Node):
         
@@ -22,12 +18,10 @@ class TF_Stamped_2_Odom(Node):
 
         # empty state vector to initialize
         self.state = np.array([0.,0.,0.,0.,0.,0.])
-        
-        topic_string = STATE_FEEDBACK_TOPIC
 
         self.state_sub = self.create_subscription(
             TransformStamped,
-            topic_string,
+            STATE_FEEDBACK_TOPIC,
             self.state_sub_callback_vicon,
             qos)
         
@@ -47,6 +41,7 @@ class TF_Stamped_2_Odom(Node):
         # shift the quaternion by pi/2 to account for the difference between the vicon and odom frames
 
         original_quaternion = (self.state[5],self.state[2], self.state[3], self.state[4])  # Assuming initial quaternion (0, 0, 0, 0)
+        
         yaw_shift = math.pi / 2  # Yaw rotation of pi/2
 
         shifted_quaternion = shift_quaternion_by_yaw(original_quaternion, yaw_shift)
@@ -98,9 +93,6 @@ class TF_Stamped_2_Odom(Node):
         qy = msg.transform.rotation.y
         qz = msg.transform.rotation.z
         qw = msg.transform.rotation.w
-
-        # convert quaternion to euler angle
-        #(roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
 
         # update state
         self.state = np.array([x,y,qx,qy,qz,qw])

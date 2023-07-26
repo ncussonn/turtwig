@@ -1,30 +1,21 @@
-# dynamic programming node for refine cbf experiment
+#!/usr/bin/env python3
 
-import sys; sys.version
+# TODO: Occasionally, this script crashes due to the loading of the new cbf happening as it is being saved to. Should try and find a workaround.
 
-# TODO: REMOVE THESE LINES
-import sys
-sys.path.insert(0, '/home/nate/turtwig_ws/src/refine_cbf/refine_cbf') # for experiment_utils.py
+# sends visualization topics to rviz
 
-import rclpy
-import numpy as np
 from rclpy.node import Node
-from std_msgs.msg import Bool
-#from sensor_msgs.msg import PointCloud2, PointField
-from nav_msgs.msg import Odometry, Path
-from geometry_msgs.msg import PoseStamped
-import refine_cbfs
-from refine_cbfs.dynamics import HJControlAffineDynamics
-from cbf_opt import ControlAffineDynamics, ControlAffineCBF
-import hj_reachability as hj
-import jax.numpy as jnp
-from config import *
-import matplotlib.pyplot as plt
-from rclpy.qos import QoSProfile
-
-import pickle
+from refine_cbf.config import *
 
 class RefineCBF_Visualization(Node):
+
+    '''
+    RVIZ Visualization Node for refineCBF
+
+    - subscribed topics: \gazebo\odom (or \odom or \vicon_odom), \cbf_availability
+    - published topics: \obstacle_1, \obstacle_2, \obstacle_3, \obstacle_4, \obstacle_5, \safe_set_1, \safe_set_2, \safe_set_3, \safe_set_4, \safe_set_5, \initial_safe_set, \goal_set
+
+    '''
         
     def __init__(self):
 
@@ -33,11 +24,12 @@ class RefineCBF_Visualization(Node):
 
         # See config.py file for GLOBAL variables definitions
         # defining experiment parameters
-        self.grid_resolution = GRID_RESOLUTION # grid resolution for hj reachability
-        self.state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
-        self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=PERIODIC_DIMENSIONS) # defining the grid object for hj reachability
+        # self.grid_resolution = GRID_RESOLUTION # grid resolution for hj reachability
+        # self.state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
+        # self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=PERIODIC_DIMENSIONS) # defining the grid object for hj reachability
+        self.grid = GRID
         self.obst_padding = OBSTACLE_PADDING # Minkowski sum for padding
-        self.constraint_set = define_constraint_set(OBSTACLES_1, OBSTACLE_PADDING) # defining the constraint set l(x) terminal cost
+        self.constraint_set = define_constraint_function(OBSTACLE_LIST[0], OBSTACLE_PADDING) # defining the constraint set l(x) terminal cost
         self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states) # defining the obstacle for the Hamilton Jacobi Reachability package
 
         # a depth of 10 suffices in most cases, but this can be increased if needed
@@ -70,6 +62,9 @@ class RefineCBF_Visualization(Node):
         # cbf to save
         self.cbf_to_save = {self.iteration:INITIAL_CBF}
         
+        # create the state feedback subscriber callback function
+        create_sub_callback(self.__class__, STATE_FEEDBACK_TOPIC)
+
         # initial state
         self.state = INITIAL_STATE
 
@@ -152,10 +147,6 @@ class RefineCBF_Visualization(Node):
 
         return msg
 
-    ##################################################
-    ################### PUBLISHERS ###################
-    ##################################################
-
     def publish_safe_set(self, paths):
 
         '''
@@ -230,6 +221,9 @@ class RefineCBF_Visualization(Node):
 
         # publish the obstacle paths
         # Only supports up to 5 disjoint obstacles
+
+        self.get_logger().info('Publishing: Obstacle Paths')
+
         for i in range(len(paths)):
             
             path = paths[i]
@@ -238,8 +232,6 @@ class RefineCBF_Visualization(Node):
             vertices = swap_x_y_coordinates(vertices)
 
             msg = self.create_path_msg(vertices)
-
-            self.get_logger().info('Publishing: Obstacle Path')
 
             if i == 0:
                 self.obstacle_1_publisher_.publish(msg)
@@ -308,7 +300,7 @@ class RefineCBF_Visualization(Node):
             # wrap theta slice to 0, as max grid point index does not exist
             theta_slice = 0
 
-        print("Theta Slice: ", theta_slice)
+        print("Depicting safe set at theta slice: ", theta_slice)
 
         # publish safe set contours as a path message
         safe_set_contour = self.ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., theta_slice], levels=[0], colors='k')
@@ -318,32 +310,6 @@ class RefineCBF_Visualization(Node):
 
         # close the figure to prevent memory leak
         plt.close(fig)
-
-    # Simulation State Subscription
-    def state_sub_callback(self, msg):
-
-        # Message to terminal
-        self.get_logger().info('Received new state.')
-
-        # convert quaternion to euler angle
-        (roll, pitch, yaw) = euler_from_quaternion(msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
-
-        self.state = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, yaw])
-        
-        print("Current State: ", self.state)
-
-    # State Subscription for TransformStamped
-    def state_sub_callback_vicon(self, msg):
-
-        # Message to terminal
-        self.get_logger().info('Received new state information from Vicon arena.')
-
-        # convert quaternion to euler angle in radians
-        (roll, pitch, yaw) = euler_from_quaternion(msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w)
-
-        self.state = np.array([msg.transform.translation.x, msg.transform.translation.y, yaw+np.pi/2])
-        
-        print("Current State: ", self.state)
 
 def main():
 

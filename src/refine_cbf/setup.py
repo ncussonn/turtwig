@@ -22,11 +22,9 @@ setup(
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [   
-            'state_estimator = refine_cbf.state_estimator:main',
+        'console_scripts': [
             'safety_filter = refine_cbf.safety_filter:main',
             'dynamic_programming = refine_cbf.dynamic_programming:main',
-            'diff_drive = refine_cbf.differential_drive:main',
             'nominal_policy = refine_cbf.nominal_policy:main',
             'low_level_control = refine_cbf.low_level_controller:main',
             'refine_cbf_visualization = refine_cbf.refine_cbf_visualization:main',	
