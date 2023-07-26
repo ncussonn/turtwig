@@ -36,7 +36,7 @@ class Obstacles:
         "bounding_box": {
             "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
         },
-        "iteration": 10,
+        "iteration": 20,
     }
 
     # 3rd set of obstacles
@@ -47,7 +47,7 @@ class Obstacles:
         "bounding_box": {
             "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
         },
-        "iteration": 20,
+        "iteration": 40,
     }
 
     # Add more obstacles here if necessary.

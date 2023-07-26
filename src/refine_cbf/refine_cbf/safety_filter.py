@@ -36,9 +36,9 @@ class SafetyFilter(Node):
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
             self.tabular_cbf.vf_table = INITIAL_CBF
         else:
-            self.cbf = jnp.load(CBF_FILENAME)
+            self.cbf = jnp.load(PRECOMPUTED_CBF_FILENAME) # load precomputed CBF
             self.tabular_cbf = refine_cbfs.TabularControlAffineCBF(self.dyn, grid=self.grid)
-            self.tabular_cbf.vf_table = np.array(self.cbf[-1])
+            self.tabular_cbf.vf_table = np.array(self.cbf)
 
         self.diffdrive_asif = ControlAffineASIF(
             self.dyn, self.tabular_cbf, alpha=self.alpha, umin=self.umin, umax=self.umax

@@ -89,7 +89,8 @@ class NominalPolicy(Node):
 
         # Save visualization data
         ############################################
-        self.data_logger.append(x=self.state[0], y=self.state[1], theta=self.state[2], v_nom=self.nominal_policy[0, 0], omega_nom=self.nominal_policy[0, 1])
+        if USE_UNFILTERED_POLICY:
+            self.data_logger.append(x=self.state[0], y=self.state[1], theta=self.state[2], v_nom=self.nominal_policy[0, 0], omega_nom=self.nominal_policy[0, 1])
 
 def main():
     # Initialize the node
@@ -110,7 +111,8 @@ def main():
         # Shutdown protocol
         msg = create_shutdown_message()
         nominal_policy.nom_pol_publisher_.publish(msg)
-        nominal_policy.data_logger.save_data(DATA_FILENAME_NOMINAL_POLICY)
+        if USE_UNFILTERED_POLICY:
+            nominal_policy.data_logger.save_data(DATA_FILENAME)
 
     finally:
 

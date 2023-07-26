@@ -16,7 +16,7 @@ class DynamicProgramming(Node):
         super().__init__('refine_cbf')
 
         self.grid = GRID
-        self.obst_padding = OBSTACLE_PADDING  # Minkowski sum for padding
+        self.obst_padding = OBSTACLE_PADDING  # Minkowski sum for padding - needed for creating new constraint function.
         self.obstacles = OBSTACLE_LIST[0]  # initial obstacles for the experiment from config.py file
         self.constraint_set = define_constraint_function(self.obstacles, self.obst_padding)  # defining the constraint set l(x) terminal cost
         self.obstacle_hjr = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)  # defining the obstacle for the Hamilton Jacobi Reachability package
@@ -98,28 +98,33 @@ class DynamicProgramming(Node):
 
         # save the value function
         print("Saving value function...")
-        # save the current cbf to a file
+        # save the current cbf to a file - the safety filter and visualization node will load from this file!
         np.save('./log/cbf.npy', self.cbf)
 
         # publish boolean value indicating a new cbf is available
         self.publish_cbf()
 
 def main():
-    rclpy.init()
-    dynamic_programming = DynamicProgramming()
 
-    try:
-        dynamic_programming.get_logger().info("Starting dynamic programming node, shut down with CTRL+C")
-        rclpy.spin(dynamic_programming)
+    if USE_REFINECBF:
+        rclpy.init()
+        dynamic_programming = DynamicProgramming()
 
-    except KeyboardInterrupt:
-        dynamic_programming.get_logger().info('Keyboard interrupt, shutting down.\n')
+        try:
+            dynamic_programming.get_logger().info("Starting dynamic programming node, shut down with CTRL+C")
+            rclpy.spin(dynamic_programming)
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    dynamic_programming.destroy_node()
-    rclpy.shutdown()
+        except KeyboardInterrupt:
+            dynamic_programming.get_logger().info('Keyboard interrupt, shutting down.\n')
+
+        # Destroy the node explicitly
+        # (optional - otherwise it will be done automatically
+        # when the garbage collector destroys the node object)
+        dynamic_programming.destroy_node()
+        rclpy.shutdown()
+    else:
+        print("RefineCBF is not being used, so the dynamic programming node is not needed.")
+        exit()
 
 if __name__ == '__main__':
     main()

@@ -25,16 +25,8 @@ from cbf_opt import ControlAffineDynamics, ControlAffineCBF, ControlAffineASIF
 from refine_cbf.utils import *
 from refine_cbf.experiment_obstacles import Obstacles
 
-# Type of system being controlled: 'DIFF_DRIVE' or 'QUADROTOR'
-# NOTE: Unused right now
-SYSTEM_TYPE = 'DIFF_DRIVE'
-
-# Save location of experiment data (written to in safety_filter.py)
-DATA_FILENAME = '/home/nate/turtwig_ws/log/test_dataset.txt'
-DATA_FILENAME_NOMINAL_POLICY = '/home/nate/turtwig_ws/log/test_dataset_nominal_policy.txt'
-
-# Save location of iteration step data (written to in dynamic_programming.py)
-ITERATION_STEP_FILENAME = '/home/nate/turtwig_ws/log/test_iteration_step.txt'
+# Save location of experiment data (written to in safety_filter.py, or nominal_policy.py if USE_UNFILTERED_POLICY = True)
+DATA_FILENAME = './experiment_dataset.txt'
 
 # Hardware Experiment
 # If True, transformstamped to odom node will run to allow communication between state feedback in Vicon arena and Rviz (trajectory would not show otherwise)
@@ -48,7 +40,7 @@ STATE_FEEDBACK_TOPIC = 'gazebo/odom'
 # Use unfiltered policy (i.e. only nominal/safety agnostic control applied): True or False
 # used in the refine_cbf_launch.py and nominal_policy.py
 # If True, this will publish the /cmd_vel topic straight from the nominal policy node instead of the safety filter node
-# Run data will not be saved to a the typical data file if this is True (will be found in DATA_FILENAME_NOMINAL_POLICY). TODO: Make it so this isn't the case.
+# Run data will not be saved to a the typical data file if this is True (will be found in DATA_FILENAME_NOMINAL_POLICY).
 USE_UNFILTERED_POLICY = False
 
 # Use a manually controller for the nominal policy: True or False
@@ -74,7 +66,7 @@ NOMINAL_POLICY_QOS_DEPTH = 10
 
 ## NOMINAL POLICY TABLE
 # Insert the filename of the nominal policy table numpy file, that was precomputed.
-NOMINAL_POLICY_FILENAME = '/home/nate/refineCBF/experiment/data_files/2 by 2 Grid/nominal_policy_table_2x2_61_61_61_grid_goal_1pt5x_1pt0y_reduced_omega_bound.npy'
+NOMINAL_POLICY_FILENAME = './nominal_policy_table.npy'
 
 ## HAMILTON JACOBI REACHABILITY GRID
 
@@ -139,6 +131,12 @@ DYNAMICS_HAMILTON_JACOBI_REACHABILITY_WITH_DISTURBANCE = HJControlAffineDynamics
 
 ## CONTROL BARRIER FUNCTION (CBF)
 
+# Precomputed CBF Filename - if not using RefineCBF (i.e. USE_REFINECBF = False), this will be the CBF used in the safety filter CBF-QP
+PRECOMPUTED_CBF_FILENAME = './precomputed_cbf.npy'
+
+# Experiment CBF Filename: Location where a dictionary of each CBF iteration will be saved to - can be used analyze CBF in post
+EXPERIMENT_CBF_FILENAME = './experiment_cbf.pkl'
+
 # Gamma value / discount rate for the CBVF - affects how quickly system can exponentially approach boundary of the safe set
 # A higher gamma value will make the safety control more aggressive, while a lower gamma value will make the safety control more conservative.
 # With gamma = 0 resulting in extreme conservativeness, where the resulting trajectories will not take a form which drops below the initial safety value.
@@ -152,83 +150,16 @@ CBF_SCALAR = 1.0
 RADIUS_CBF = 0.33 # radius of the circular CBF
 CENTER_CBF = np.array([0.5, 1.0]) # center of the circular CBF
 
+# CBF Object
 CBF = DiffDriveCBF(DYNAMICS, {"center": CENTER_CBF, "r": RADIUS_CBF, "scalar": CBF_SCALAR}, test=False)
 
-# CBF Filename
-CBF_FILENAME = '/home/nate/thesis/Visualization Code/safety_filter_example_cbf.npy'
+# Creating the Initial CBF
+diffdrive_cbf = CBF # instatiate a diffdrive_cbf object with the Differential Drive dynamics object
+diffdrive_tabular_cbf = refine_cbfs.TabularControlAffineCBF(DYNAMICS, dict(), grid=GRID)
+diffdrive_tabular_cbf.tabularize_cbf(diffdrive_cbf) # tabularize the cbf so that value can be calculated at each grid point
+INITIAL_CBF = diffdrive_tabular_cbf.vf_table # initial CBF
 
 ## CONSTRAINT SET / OBSTACLES
-
-# NOTE: Example set of obstacles. At the designated iteration 
-
-# # Initial set of obstacles
-# OBSTACLES_1 = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
-# # 2nd set of obstacles
-# OBSTACLES_2  = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
-
-# # 3rd set of obstacles
-# OBSTACLES_3 = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
-
-# # 4th set of obstacles
-# OBSTACLES_4 = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
-
-# # 5th set of obstacles
-# OBSTACLES_5 = {
-#     "circle": {
-#         "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-#     },
-#     "rectangle": {
-#         "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-#         "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-#     },
-#     "bounding_box": {
-#         "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-#     },
-# }
 
 OBSTACLES = Obstacles()
 
@@ -237,26 +168,14 @@ OBSTACLE_LIST = OBSTACLES.get_obstacle_list()
 
 # When to update obstacles, size of the list must be n-1, where n is the number of obstacle sets.
 OBSTACLE_ITERATION_LIST = OBSTACLES.get_iteration_list()
-#OBSTACLE_ITERATION_LIST = [10, 20, 30, 40]
-    
-# define the obstacle dictionary list
-# each element in the list is a dictionary of obstacles
-#OBSTACLE_LIST = [OBSTACLES_1, OBSTACLES_2, OBSTACLES_3, OBSTACLES_4, OBSTACLES_5]
 
 # padding around the obstacle in meters
 # float that inflates the obstacles by a certain amount using Minkoswki sum
 # For example, if the maximum radius of a robot is 0.15 m, the padding should be at least 0.15 m
 OBSTACLE_PADDING = 0.11
 
+## Goal Set
+
 # Goal Set Parameters, used in refine_cbf_visualization.py
 GOAL_SET_RADIUS = 0.10
 GOAL_SET_CENTER = np.array([1.5, 1.0])
-GOAL_SET_VERTEX_COUNT = 25 # will be used to generate contour in RVIZ for goal set - higher density will make the contour smoother
-
-# Creating the Initial CBF
-state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
-grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(state_domain, GRID_RESOLUTION, periodic_dims=PERIODIC_DIMENSIONS)
-diffdrive_cbf = CBF # instatiate a diffdrive_cbf object with the Differential Drive dynamics object
-diffdrive_tabular_cbf = refine_cbfs.TabularControlAffineCBF(DYNAMICS, dict(), grid=grid) # tabularize the cbf so that value can be calculated at each grid point
-diffdrive_tabular_cbf.tabularize_cbf(diffdrive_cbf) # tabularize the cbf so that value can be calculated at each grid point
-INITIAL_CBF = diffdrive_tabular_cbf.vf_table # initial CBF

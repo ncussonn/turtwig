@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-# TODO: Occasionally, this script crashes due to the loading of the new cbf happening as it is being saved to. Should try and find a workaround.
+# Node which sends visualization topics to rviz
 
-# Sends visualization topics to rviz
+# NOTE: There will be a slight delay in the visuals versus what the robot actually "sees". This is why it may appear the system 
+#       leaves the current safe-set in RVIZ.
+# TODO: Occasionally, this script crashes due to the loading of the new cbf happening as it is being saved to. Should try and find a workaround.
 
 from rclpy.node import Node
 from refine_cbf.config import *
@@ -11,8 +13,8 @@ class RefineCBFVisualization(Node):
     """
     RVIZ Visualization Node for refineCBF.
 
-    - Subscribed topics: \gazebo\odom (or \odom or \vicon_odom), \cbf_availability
-    - Published topics: \obstacle_1, \obstacle_2, \obstacle_3, \obstacle_4, \obstacle_5, \safe_set_1,
+    Subscribed topics: \gazebo\odom (or \odom or \vicon_odom), \cbf_availability
+    Published topics: \obstacle_1, \obstacle_2, \obstacle_3, \obstacle_4, \obstacle_5, \safe_set_1,
                         \safe_set_2, \safe_set_3, \safe_set_4, \safe_set_5, \initial_safe_set, \goal_set
     """
         
@@ -25,7 +27,7 @@ class RefineCBFVisualization(Node):
 
         # See config.py file for GLOBAL variable definitions
         self.grid = GRID
-        self.obst_padding = OBSTACLE_PADDING  # Minkowski sum for padding
+        self.obst_padding = OBSTACLE_PADDING # used when creating new constraint function
         self.constraint_set = define_constraint_function(OBSTACLE_LIST[0], OBSTACLE_PADDING)  # Defining the constraint set l(x) terminal cost
         self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)  # Defining the obstacle for the Hamilton Jacobi Reachability package
 
@@ -54,10 +56,16 @@ class RefineCBFVisualization(Node):
         self.initial_safe_set_vertices = []
 
         self.iteration = 0
-        self.cbf = INITIAL_CBF
 
-        # Cbf to save
-        self.cbf_to_save = {self.iteration: INITIAL_CBF}
+        if USE_REFINECBF:
+            self.cbf = INITIAL_CBF
+        else:
+            self.cbf = np.load(PRECOMPUTED_CBF_FILENAME)
+
+        self.initial_cbf = self.cbf  # Save the initial cbf for visualization purposes
+            
+        # Cbf to save, a dictionary where new entries are made upon receiving a new CBF
+        self.cbf_to_save = {self.iteration: self.cbf}
         
         # Create the state feedback subscriber callback function
         create_sub_callback(self.__class__, STATE_FEEDBACK_TOPIC)
@@ -92,7 +100,7 @@ class RefineCBFVisualization(Node):
             # Load new tabular cbf
             self.cbf = jnp.load('./log/cbf.npy')
 
-            # Update the cbf to save
+            # Update the cbf to save by adding new iteration to the dictionary
             self.cbf_to_save[self.iteration] = self.cbf
 
     def generate_pose_stamp(self, vertex, time_stamp):
@@ -294,14 +302,11 @@ class RefineCBFVisualization(Node):
         # Initiate a figure for matplotlib to plot the contours - size is irrelevant
         fig, self.ax = plt.subplots(1, 1, figsize=(1, 1))
 
-        ## Generate the initial cbf safe set contour and goal set
+        ## Generate the goal set just once
         if self.iteration == 0:
-            safe_set_contour = self.ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., 0], levels=[0], colors='k')
-            self.initial_safe_set_vertices = safe_set_contour.collections[0].get_paths()[0].vertices  # Retrieve vertices of the contour for Rviz visualization
-            self.publish_initial_safe_set(self.initial_safe_set_vertices)  # Publish the vertices as a path message
-
+            
             # Generate the goal set vertices
-            self.goal_set_vertices = generate_circle_vertices(radius=GOAL_SET_RADIUS, center=GOAL_SET_CENTER, num_vertices=GOAL_SET_VERTEX_COUNT)
+            self.goal_set_vertices = generate_circle_vertices(radius=GOAL_SET_RADIUS, center=GOAL_SET_CENTER, num_vertices=50)
             self.publish_goal_set(self.goal_set_vertices)  # Publish the goal set vertices as a path message
         
         # Update the obstacle set based on the current refine CBF iteration
@@ -321,6 +326,11 @@ class RefineCBFVisualization(Node):
             theta_slice = 0
 
         print("Depicting safe set at theta slice: ", theta_slice)
+
+        # Initial safe set contour
+        initial_safe_set_contour = self.ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.initial_cbf[..., theta_slice], levels=[0], colors='k')
+        self.initial_safe_set_vertices = initial_safe_set_contour.collections[0].get_paths()[0].vertices  # Retrieve vertices of the contour for Rviz visualization
+        self.publish_initial_safe_set(self.initial_safe_set_vertices)  # Publish the vertices as a path message
 
         # Publish safe set contours as a path message
         safe_set_contour = self.ax.contour(self.grid.coordinate_vectors[1], self.grid.coordinate_vectors[0], self.cbf[..., theta_slice], levels=[0], colors='k')
@@ -345,7 +355,7 @@ def main():
     except KeyboardInterrupt:
         refinecbf_visualization.get_logger().info('Keyboard interrupt, shutting down and saving CBF.\n')
         # Save the cbf dictionary
-        f = open('./log/cbf_to_save.pkl', 'wb')
+        f = open('./experiment_cbf.pkl', 'wb')
         pickle.dump(refinecbf_visualization.cbf_to_save, f)
         f.close()
 

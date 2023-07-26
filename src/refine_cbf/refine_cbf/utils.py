@@ -7,6 +7,7 @@ import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import math
+from typing import Type
 
 # ROS2 packages
 from std_msgs.msg import Bool, Float32
@@ -29,7 +30,7 @@ class DiffDriveDynamics(ControlAffineDynamics):
     CONTROLS = ['VEL', 'OMEGA']
     DISTURBANCE = ['D']
 
-    def __init__(self, params, test=False, **kwargs):
+    def __init__(self, params: dict, test=False, **kwargs):
         """Parameterized constructor.
 
         Args:
@@ -221,7 +222,7 @@ class DiffDriveCBF(ControlAffineCBF):
         return self.scalar * dvf_dx
 
 
-def euler_from_quaternion(x, y, z, w):
+def euler_from_quaternion(x: float, y: float, z: float, w: float):
     """
     Converts a quaternion into Euler angles (roll, pitch, yaw) in radians.
 
@@ -248,7 +249,7 @@ def euler_from_quaternion(x, y, z, w):
     return roll_x, pitch_y, yaw_z  # in radians
 
 
-def quaternion_from_euler(roll, pitch, yaw):
+def quaternion_from_euler(roll: float, pitch: float, yaw: float):
     """
     Converts Euler angles to quaternion representation.
 
@@ -276,7 +277,7 @@ def quaternion_from_euler(roll, pitch, yaw):
     return qw, qx, qy, qz
 
 
-def shift_quaternion_by_yaw(quaternion, yaw_shift):
+def shift_quaternion_by_yaw(quaternion: tuple, yaw_shift: float):
     """
     Shifts a quaternion angle representation by a yaw rotation.
 
@@ -302,7 +303,7 @@ def shift_quaternion_by_yaw(quaternion, yaw_shift):
     return shifted_quaternion
 
 
-def quaternion_multiply(quat1, quat2):
+def quaternion_multiply(quat1: tuple, quat2: tuple):
     """
     Multiplies two quaternions.
 
@@ -484,7 +485,7 @@ class ParameterStorage:
         plt.tight_layout()
         plt.show()
 
-    def save_data(self, filename):
+    def save_data(self, filename: str):
         """
         Save parameter data to a CSV file.
 
@@ -494,7 +495,7 @@ class ParameterStorage:
         np.savetxt(filename, np.c_[self.x, self.y, self.theta, self.safety_value, self.v, self.omega, self.v_nom, self.omega_nom], delimiter=',')
         print("Data saved to " + filename)
 
-    def load_data(self, filename):
+    def load_data(self, filename: str):
         """
         Load parameter data from a CSV file.
 
@@ -751,7 +752,7 @@ def define_constraint_function(obstacles: dict, padding: float):
     return constraint_function
 
 
-def save_float_to_file(data, filename):
+def save_float_to_file(data: float, filename: str):
     """
     Saves a floating-point value to a file. If the file exists, appends the value at the end;
     otherwise, creates a new file and writes the value.
@@ -892,7 +893,7 @@ def create_new_obstacle_set(self, obstacles: dict, iteration: int):
     self.constraint_set = define_constraint_function(obstacles, self.obst_padding)
 
 
-def introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST):
+def introduce_obstacle(self, OBSTACLE_LIST: list, OBSTACLE_ITERATION_LIST: list):
     """
     Introduces a new obstacle based on the provided list of obstacles and their corresponding iterations.
 
@@ -1011,6 +1012,7 @@ def state_sub_callback_odom(self, msg):
     Callback function for subscribing to the state information from the 'odom' topic or 'gazebo/odom' topic.
 
     Parameters:
+    self: ROS node class instance.
     msg: Odometry message containing the state information.
 
     Updates the 'self.state' attribute with the current state information.
@@ -1032,6 +1034,7 @@ def state_sub_callback_tf_stamped(self, msg):
     Callback function for subscribing to the state information from the 'vicon/turtlebot_1/turtlebot_1' topic.
 
     Parameters:
+    self: ROS node class instance.
     msg: TransformStamped message containing the state information.
 
     Updates the 'self.state' attribute with the current state information.
@@ -1052,7 +1055,7 @@ def state_sub_callback_tf_stamped(self, msg):
     print("Current State: ", self.state)
 
 
-def create_sub_callback(cls, topic_name):
+def create_sub_callback(cls: Type, topic_name: str):
     """
     Creates a state subscriber callback function based on the topic name.
 
