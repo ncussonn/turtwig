@@ -20,11 +20,6 @@ class DynamicProgramming(Node):
         # name of node for ROS2
         super().__init__('refine_cbf')
 
-        # See config.py file for global variables definitions
-        # defining experiment parameters
-        # self.grid_resolution = GRID_RESOLUTION # grid resolution for hj reachability
-        # self.state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
-        # self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=PERIODIC_DIMENSIONS) # defining the grid object for hj reachability
         self.grid = GRID
         self.obst_padding = OBSTACLE_PADDING # Minkowski sum for padding
         self.obstacles = OBSTACLE_LIST[0] # initial obstacles for the experiment from config.py file

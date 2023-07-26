@@ -1,5 +1,11 @@
-import numpy as np
+# Contains Obstacles class.
+# Its attributes are the different sets of obstacles used in the experiment.
+# Any number of sets of obstacles can be defined.
+# The sets of obstacles are defined as dictionaries.
+# Currently only circles, rectangles and bounding boxes are supported.
+# Addtionally, functionality can be developed by adding to the refine_cbf/utils.py file.
 
+import numpy as np
 
 class Obstacles():
 
@@ -25,7 +31,6 @@ class Obstacles():
         },
         "rectangle": {
             "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-            "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
         },
         "bounding_box": {
             "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
@@ -38,45 +43,17 @@ class Obstacles():
         "circle": {
             "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
         },
-        "rectangle": {
-            "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-            "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-        },
         "bounding_box": {
             "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
         },
         "iteration": 20,
     }
 
-    # 4th set of obstacles
-    OBSTACLES_4 = {
-        "circle": {
-            "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-        },
-        "rectangle": {
-            "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-            "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-        },
-        "bounding_box": {
-            "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-        },
-        "iteration": 30,
-    }
+    # Add more obstacles here, if necessary.
 
-    # 5th set of obstacles
-    OBSTACLES_5 = {
-        "circle": {
-            "circle_1": {"center": np.array([1.1, 1.0]), "radius": 0.1},
-        },
-        "rectangle": {
-            "rectangle_1": {"center": np.array([1.5, 0.5]), "length": np.array([0.25, 0.25])},
-            "rectangle_2": {"center": np.array([1.5, 1.5]), "length": np.array([0.25, 0.25])},
-        },
-        "bounding_box": {
-            "bounding_box_1": {"center": np.array([1.0, 1.0]), "length": np.array([2.0, 2.0])},
-        },
-        "iteration": 40,
-    }
+
+
+
 
     # Methods
     def get_obstacle_list(self):

@@ -349,40 +349,6 @@ class ParameterStorage:
 
 # OBSTACLE TYPES
 
-# def circle_constraint(state, center=np.array([1,1]), radius=1, padding=0):
-
-#     distance = jnp.linalg.norm(state[:2] - center) - padding
-
-#     return distance - radius
-
-# def rectangle_constraint(state, center=np.array([1,1]), length=1, padding=0):
-    
-#     # TODO: This needs to not only return a square, but also a rectangle
-
-#     # extend the length of the square by the padding
-#     length_with_padding = length + 2 * padding
-
-#     # coordinate of bottom left corner of the obstacle
-#     bottom_left = jnp.array(center - length_with_padding / 2)
-    
-#     # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
-#     return -jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
-#                             state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
-
-# def bounding_box_constraint(state, center, length=2, padding=0):
-    
-#     # TODO: This needs to not only return a square, but also a rectangle
-
-#     # extend the length of the square by the padding
-#     length_with_padding = length - 2 * padding
-
-#     # coordinate of bottom left corner of the obstacle
-#     bottom_left = jnp.array(center - length_with_padding / 2)
-
-#     # returns a scalar (will be positive if the state is in the safe set, negative or 0 otherwise)
-#     return jnp.min(jnp.array([state[0] - bottom_left[0], bottom_left[0] + length_with_padding[0] - state[0], 
-#                             state[1] - bottom_left[1], bottom_left[1] + length_with_padding[1] - state[1]]))
-
 def create_circle_constraint(center: np.ndarray, radius: float, padding: float):
     """
     Creates a circular constraint function based on the given parameters.
@@ -603,8 +569,6 @@ def configure_nominal_policy_publisher(self, qos, USE_UNFILTERED_POLICY: bool):
 
     return nom_pol_publisher_
 
-
-
 def create_nominal_policy_publishing_message(USE_UNFILTERED_POLICY: bool):
 
     if USE_UNFILTERED_POLICY is True:
@@ -641,19 +605,12 @@ def introduce_obstacle(self, OBSTACLE_LIST, OBSTACLE_ITERATION_LIST):
     self.solver_settings = hj.SolverSettings.with_accuracy("high", value_postprocessor=brt_fct(self.obstacle_hjr))
 
 def update_obstacle_set(self, OBSTACLE_LIST: list, OBSTACLE_ITERATION_LIST: list):
-
-    # introduce a new constraint set at specified iteration
-    if self.iteration == OBSTACLE_ITERATION_LIST[0]:        
-        create_new_obstacle_set(self, OBSTACLE_LIST[1], OBSTACLE_ITERATION_LIST[0])
-
-    elif self.iteration == OBSTACLE_ITERATION_LIST[1]:        
-        create_new_obstacle_set(self, OBSTACLE_LIST[2], OBSTACLE_ITERATION_LIST[1])
-
-    elif self.iteration == OBSTACLE_ITERATION_LIST[2]:
-        create_new_obstacle_set(self, OBSTACLE_LIST[3], OBSTACLE_ITERATION_LIST[2])
-
-    elif self.iteration == OBSTACLE_ITERATION_LIST[3]:
-        create_new_obstacle_set(self, OBSTACLE_LIST[4], OBSTACLE_ITERATION_LIST[3])
+    for i, iteration in enumerate(OBSTACLE_ITERATION_LIST):
+        if self.iteration == iteration:
+            create_new_obstacle_set(self, OBSTACLE_LIST[i], iteration)
+            break
+    else:
+        return
 
     # redefine the obstacle
     self.obstacle = hj.utils.multivmap(self.constraint_set, jnp.arange(self.grid.ndim))(self.grid.states)
@@ -699,7 +656,6 @@ def create_shutdown_message():
     msg.angular.z = 0.0
 
     return msg
-
 
 # Simulation State Subscription
 def state_sub_callback_odom(self, msg):

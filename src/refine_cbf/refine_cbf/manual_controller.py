@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# Manual Controller for Turtlebot3
+# Manual Controller for Turtlebot3.
+# Use for testing purposes only.
 
 import os
 import select

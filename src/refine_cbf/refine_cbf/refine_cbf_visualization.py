@@ -23,10 +23,6 @@ class RefineCBF_Visualization(Node):
         super().__init__('visualizer')
 
         # See config.py file for GLOBAL variables definitions
-        # defining experiment parameters
-        # self.grid_resolution = GRID_RESOLUTION # grid resolution for hj reachability
-        # self.state_domain = hj.sets.Box(lo=GRID_LOWER, hi=GRID_UPPER) # defining the state_domain
-        # self.grid = hj.Grid.from_lattice_parameters_and_boundary_conditions(self.state_domain, self.grid_resolution, periodic_dims=PERIODIC_DIMENSIONS) # defining the grid object for hj reachability
         self.grid = GRID
         self.obst_padding = OBSTACLE_PADDING # Minkowski sum for padding
         self.constraint_set = define_constraint_function(OBSTACLE_LIST[0], OBSTACLE_PADDING) # defining the constraint set l(x) terminal cost

@@ -25,7 +25,6 @@ from cbf_opt import ControlAffineDynamics, ControlAffineCBF, ControlAffineASIF
 from refine_cbf.utils import *
 from refine_cbf.experiment_obstacles import Obstacles
 
-
 # Type of system being controlled: 'DIFF_DRIVE' or 'QUADROTOR'
 # NOTE: Unused right now
 SYSTEM_TYPE = 'DIFF_DRIVE'
