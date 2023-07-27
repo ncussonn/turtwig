@@ -17,11 +17,11 @@ Requires installing `jax` additionally based on available accelerator support. S
 - (Optional) `ros1_bridge`: if needing to interface with ROS1 nodes, it may be necessary to bridge between ROS1 and ROS2 topics, [this bridging package](https://github.com/ros2/ros1_bridge) allows this. For example, if using the Vicon aerodrome arena at UCSD, the standard package publishes state information over ROS1 topics and thus a bridge must be made between them.
 - (Optional) `erl_quadrotor_vicon`: if using the UC San Diego aerodrome arena, this package will be necessary to retrieve Vicon state information. See [ERL Github](https://github.com/ExistentialRobotics/erl_quadrotor_vicon). Do not let the name of the package deceive you, it can retrieve the pose of any kind of robot. This will additonally require the ROS1 distibution [Noetic Ninjemys](http://wiki.ros.org/noetic/Installation/Ubuntu).
 
-## User Guide:
+## User Guide
 
 The package is built around modified [ROBOTIS Turtlebot3 standard libraries](https://github.com/ROBOTIS-GIT/turtlebot3) and [Dynamixel SDK](https://github.com/ROBOTIS-GIT/DynamixelSDK) libraries. As such, if other Turtlebot3 (TB3) packages are sourced at the same time in your environment, there may be erroneous behavior.
 
-See the [code documentation]() for full description of package.
+See the [code documentation]() for full description of package and how to use it.
 
 ## Time Saving Aliases for .bashrc
 
