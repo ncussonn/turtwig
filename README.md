@@ -33,5 +33,10 @@ Adding the following aliases to your `.bashrc` file may save time during use. Ty
 - Running Visualization node: `echo 'alias rcbf_vz='ros2 run refine_cbf refine_cbf_visualization'' >> ~/.bashrc`
 - SSH into tb3 (add your tb3 IP address): `echo 'alias tb3_ssh='ssh ubuntu@<tb3_ip_address>'' >> ~/.bashrc`
 
+## Package Namesake
+This package is codenamed Turtwig after the turtle Pokemon!
+
+![turtwig](https://github.com/ncussonn/turtwig/assets/48974771/b1acaff7-264f-48dc-8739-0c5085f967a5)
+
 
 
