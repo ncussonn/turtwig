@@ -19,7 +19,7 @@ Requires installing `jax` additionally based on available accelerator support. S
 
 ## User Guide
 
-See the [code documentation]() for full description of package and how to use it.
+See the [code documentation](https://github.com/ncussonn/turtwig/blob/master/RefineCBF_Documentation.pdf) for full description of package and how to use it.
 
 ## Time Saving Aliases for .bashrc
 
