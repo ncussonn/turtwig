@@ -19,8 +19,6 @@ Requires installing `jax` additionally based on available accelerator support. S
 
 ## User Guide
 
-The package is built around modified [ROBOTIS Turtlebot3 standard libraries](https://github.com/ROBOTIS-GIT/turtlebot3) and [Dynamixel SDK](https://github.com/ROBOTIS-GIT/DynamixelSDK) libraries. As such, if other Turtlebot3 (TB3) packages are sourced at the same time in your environment, there may be erroneous behavior.
-
 See the [code documentation]() for full description of package and how to use it.
 
 ## Time Saving Aliases for .bashrc
