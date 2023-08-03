@@ -6,7 +6,7 @@ RefineCBF is an algorithm from the paper [Refining Control Barrier Functions usi
 
 This package relies on the following:
 
-- Ubuntu 20.04 LTS operating system. It is possible this code can run on other distributions but may require minor alterations and has not been tested.
+- Ubuntu 20.04 LTS operating system. It is possible this code can run on other ROS2 compatible distributions but may require minor alterations and has not been tested.
 - Python 3: `sudo apt install python3.x` (where x is most up-to-date python 3 distribution)
 - [Foxy Fitzroy](https://github.com/ros2/ros2/releases) ROS2 distribution with RVIZ2.
 - ROS Physics Simulator [Gazebo](http://classic.gazebosim.org/tutorials?tut=ros2_installing&cat=connect_ros) for Foxy distribution.
@@ -19,7 +19,22 @@ Requires installing `jax` additionally based on available accelerator support. S
 
 ## User Guide
 
-See the [code documentation](https://github.com/ncussonn/turtwig/blob/master/RefineCBF_Documentation.pdf) for full description of package and how to use it.
+Full documentation under construction. But to run minimal example in Gazebo:
+
+Gazebo Terminal:
+- `source ~/<refine_cbf_ws>/install/setup.bash`
+- `ros2 launch turtlebot3_gazebo refine_cbf_experiment_2x2.launch.py`
+  
+RVIZ Terminal:
+- `source /opt/ros/<ros2_distro>/setup.bash`
+- `rviz2`
+- Apply the provided rviz config file: `refine_cbf.rviz`
+
+RefineCBF Terminal:
+- `cd ~/<refine_cbf_ws>` (Must be run in the root of workspace for relative folder pointers!)
+- `ros2 launch refine_cbf refine_cbf_launch.py`
+
+(Under construction) See the [code documentation](https://github.com/ncussonn/turtwig/blob/master/RefineCBF_Documentation.pdf) for full description of package and how to use it.
 
 ## Time Saving Aliases for .bashrc
 
@@ -27,11 +42,17 @@ Adding the following aliases to your `.bashrc` file may save time during use. Ty
 
 - Sourcing Package: `echo 'alias rcbf='source ~/<refine_cbf_ws>/install/setup.bash'' >> ~/.bashrc`
 - Launching Gazebo Experiment: `echo 'alias rcbf_gzb='ros2 launch turtlebot3_gazebo refine_cbf_experiment_2x2.launch.py'' >> ~/.bashrc`
+- RefineCBF Experiment Launch: `echo 'alias launch_rcbf='ros2 launch refine_cbf refine_cbf_launch.py'' >> ~/.bashrc`
 - Running Safety Filter node: `echo 'alias rcbf_sf='ros2 run refine_cbf safety_filter'' >> ~/.bashrc`
 - Running Nominal Policy node: `echo 'alias rcbf_np='ros2 run refine_cbf nominal_policy'' >> ~/.bashrc`
 - Running Dynamic Programming node: `echo 'alias rcbf_dp='ros2 run refine_cbf dynamic_programming'' >> ~/.bashrc`
 - Running Visualization node: `echo 'alias rcbf_vz='ros2 run refine_cbf refine_cbf_visualization'' >> ~/.bashrc`
 - SSH into tb3 (add your tb3 IP address): `echo 'alias tb3_ssh='ssh ubuntu@<tb3_ip_address>'' >> ~/.bashrc`
+
+## Package Namesake
+This package is codenamed Turtwig after the turtle Pokemon!
+
+![turtwig](https://github.com/ncussonn/turtwig/assets/48974771/b1acaff7-264f-48dc-8739-0c5085f967a5)
 
 
 
