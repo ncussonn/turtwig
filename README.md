@@ -40,14 +40,14 @@ RefineCBF Terminal:
 
 Adding the following aliases to your `.bashrc` file may save time during use. Type the desired following commands in your command line:
 
-- Sourcing Package: `echo 'alias rcbf='source ~/<refine_cbf_ws>/install/setup.bash'' >> ~/.bashrc`
-- Launching Gazebo Experiment: `echo 'alias rcbf_gzb='ros2 launch turtlebot3_gazebo refine_cbf_experiment_2x2.launch.py'' >> ~/.bashrc`
-- RefineCBF Experiment Launch: `echo 'alias launch_rcbf='ros2 launch refine_cbf refine_cbf_launch.py'' >> ~/.bashrc`
-- Running Safety Filter node: `echo 'alias rcbf_sf='ros2 run refine_cbf safety_filter'' >> ~/.bashrc`
-- Running Nominal Policy node: `echo 'alias rcbf_np='ros2 run refine_cbf nominal_policy'' >> ~/.bashrc`
-- Running Dynamic Programming node: `echo 'alias rcbf_dp='ros2 run refine_cbf dynamic_programming'' >> ~/.bashrc`
-- Running Visualization node: `echo 'alias rcbf_vz='ros2 run refine_cbf refine_cbf_visualization'' >> ~/.bashrc`
-- SSH into tb3 (add your tb3 IP address): `echo 'alias tb3_ssh='ssh ubuntu@<tb3_ip_address>'' >> ~/.bashrc`
+- Sourcing Package: `echo "alias launch_rcbf='ros2 launch refine_cbf refine_cbf_launch.py'" >> ~/.bashrc`
+- Launching Gazebo Experiment: `echo "alias rcbf_gzb='ros2 launch turtlebot3_gazebo refine_cbf_experiment_2x2.launch.py'" >> ~/.bashrc`
+- RefineCBF Experiment Launch: `echo "alias launch_rcbf='ros2 launch refine_cbf refine_cbf_launch.py'" >> ~/.bashrc`
+- Running Safety Filter node: `echo "alias rcbf_sf='ros2 run refine_cbf safety_filter'" >> ~/.bashrc`
+- Running Nominal Policy node: `echo "alias rcbf_np='ros2 run refine_cbf nominal_policy'" >> ~/.bashrc`
+- Running Dynamic Programming node: `echo "alias rcbf_dp='ros2 run refine_cbf dynamic_programming'" >> ~/.bashrc`
+- Running Visualization node: `echo "alias rcbf_vz='ros2 run refine_cbf refine_cbf_visualization'" >> ~/.bashrc`
+- SSH into tb3 (add your tb3 IP address): `echo "alias tb3_ssh='ssh ubuntu@<tb3_ip_address>'" >> ~/.bashrc`
 
 ## Package Namesake
 This package is codenamed Turtwig after the turtle Pokemon!
