@@ -19,7 +19,11 @@ Requires installing `jax` additionally based on available accelerator support. S
 
 ## User Guide
 
-Full documentation under construction. But to run minimal example in Gazebo:
+Full documentation under construction. But **to run minimal example** in Gazebo:
+
+Build the package from root of your workspace:
+- `cd ~/<refine_cbf_ws>`
+- `colcon build --symlink-install --packages-select refine_cbf`
 
 Gazebo Terminal:
 - `source ~/<refine_cbf_ws>/install/setup.bash`
