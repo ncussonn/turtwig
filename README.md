@@ -17,9 +17,13 @@ Requires installing `jax` additionally based on available accelerator support. S
 - (Optional) `ros1_bridge`: if needing to interface with ROS1 nodes, it may be necessary to bridge between ROS1 and ROS2 topics, [this bridging package](https://github.com/ros2/ros1_bridge) allows this. For example, if using the Vicon aerodrome arena at UCSD, the standard package publishes state information over ROS1 topics and thus a bridge must be made between them.
 - (Optional) `erl_quadrotor_vicon`: if using the UC San Diego aerodrome arena, this package will be necessary to retrieve Vicon state information. See [ERL Github](https://github.com/ExistentialRobotics/erl_quadrotor_vicon). Do not let the name of the package deceive you, it can retrieve the pose of any kind of robot. This will additonally require the ROS1 distibution [Noetic Ninjemys](http://wiki.ros.org/noetic/Installation/Ubuntu).
 
-## User Guide
+## Documentation
 
-Full documentation under construction. But **to run minimal example** in Gazebo:
+(Under construction) See the [code documentation](https://github.com/ncussonn/turtwig/blob/master/RefineCBF_Documentation.pdf) for full description of package and how to use it.
+
+## Minimal Example
+
+To run minimal example in Gazebo simulator:
 
 Build the package from root of your workspace:
 - `cd ~/<refine_cbf_ws>`
@@ -37,8 +41,6 @@ RVIZ Terminal:
 RefineCBF Terminal:
 - `cd ~/<refine_cbf_ws>/turtwig` (Must be run in the root of workspace for relative folder pointers!)
 - `ros2 launch refine_cbf refine_cbf_launch.py`
-
-(Under construction) See the [code documentation](https://github.com/ncussonn/turtwig/blob/master/RefineCBF_Documentation.pdf) for full description of package and how to use it.
 
 ## Time Saving Aliases for .bashrc
 
