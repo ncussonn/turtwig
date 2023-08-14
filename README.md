@@ -31,7 +31,7 @@ RVIZ Terminal:
 - Apply the provided rviz config file: `refine_cbf.rviz`
 
 RefineCBF Terminal:
-- `cd ~/<refine_cbf_ws>` (Must be run in the root of workspace for relative folder pointers!)
+- `cd ~/<refine_cbf_ws>/turtwig` (Must be run in the root of workspace for relative folder pointers!)
 - `ros2 launch refine_cbf refine_cbf_launch.py`
 
 (Under construction) See the [code documentation](https://github.com/ncussonn/turtwig/blob/master/RefineCBF_Documentation.pdf) for full description of package and how to use it.
