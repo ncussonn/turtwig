@@ -23,7 +23,8 @@ import hj_reachability as hj
 from refine_cbfs.dynamics import HJControlAffineDynamics
 from cbf_opt import ControlAffineDynamics, ControlAffineCBF, ControlAffineASIF
 from refine_cbf.utils import *
-from refine_cbf.experiment_obstacles import Obstacles
+#from refine_cbf.experiment_obstacles import Obstacles
+from refine_cbf.thesis_obstacles import Obstacles # If you want to use the obstacles from the thesis
 
 # Save location of experiment data (written to in safety_filter.py, or nominal_policy.py if USE_UNFILTERED_POLICY = True)
 DATA_FILENAME = './experiment_dataset.txt'

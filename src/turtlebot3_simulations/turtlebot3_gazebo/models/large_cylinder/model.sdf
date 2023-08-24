@@ -1,6 +1,6 @@
 <?xml version='1.0'?>
 <sdf version='1.7'>
-  <model name='unit_cylinder'>
+  <model name='large_cylinder'>
     <link name='link'>
       <inertial>
         <mass>10000</mass>
@@ -22,7 +22,7 @@
       <visual name='visual'>
         <geometry>
           <cylinder>
-            <radius>0.1</radius>
+            <radius>1.0</radius>
             <length>1</length>
           </cylinder>
         </geometry>
@@ -49,7 +49,7 @@
         <pose>0.0 0.0 0.0 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.10</radius>
+            <radius>1.0</radius>
             <length>1</length>
           </cylinder>
         </geometry>

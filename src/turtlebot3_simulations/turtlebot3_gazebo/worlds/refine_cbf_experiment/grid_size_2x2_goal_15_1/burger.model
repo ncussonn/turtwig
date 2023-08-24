@@ -48,13 +48,29 @@
       <uri>model://turtlebot3_burger</uri>
     </include>  
     
-    <model name="obstacle">
+    <model name="obstacle_center">
       <static>1</static>
       <include>
         <pose>1.1 1.0 0.0 0.0 0.0 0.0</pose>
-        <uri>model://unit_cylinder_2x2</uri>
+        <uri>model://center_cylinder</uri>
       </include>
-    </model>  
+    </model> 
+    
+    <model name="obstacle_1">
+      <static>1</static>
+      <include>
+        <pose>2.0 2.75 0.0 0.0 0.0 0.0</pose>
+        <uri>model://large_cylinder</uri>
+      </include>
+    </model>
+    
+    <model name="obstacle_2">
+      <static>1</static>
+      <include>
+        <pose>2.0 -0.75 0.0 0.0 0.0</pose>
+        <uri>model://large_cylinder</uri>
+      </include>
+    </model> 
 
     <model name="goal_zone">
       <static>1</static>

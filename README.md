@@ -28,6 +28,7 @@ To run minimal example in Gazebo simulator:
 
 Build the package from root of your workspace:
 - `cd ~/<refine_cbf_ws>`
+- `source /opt/ros/foxy/setup.bash`
 - `colcon build --symlink-install --packages-select refine_cbf`
 
 Gazebo Terminal:
