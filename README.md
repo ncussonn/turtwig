@@ -1,5 +1,5 @@
 # RefineCBF for Differential-Drive Hardware Application
-ROS package for the refineCBF algorithm implementation on a Turtlebot3 as part of Nathan Cusson-Nadeau's master's thesis at UC San Diego.
+ROS package for the refineCBF algorithm implementation on a Turtlebot3 as part of Nathan Cusson-Nadeau's Master's thesis at UC San Diego.
 RefineCBF is an algorithm from the paper [Refining Control Barrier Functions using HJ Reachability](https://arxiv.org/abs/2204.12507) by Sander Tonkens and Sylvia Herbert, IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), 2022. It provides a constructive algorithmic approach to create valid control barrier functions (CBFs) using a unification between Hamilton-Jacobi Reachability analysis and CBF theory. Valid CBFs can be used in safety-critical controls to ensure safety during real-time operation of autonomous systems.
 
 ## Requirements:
