@@ -13,9 +13,9 @@ class RefineCBFVisualization(Node):
     """
     RVIZ Visualization Node for refineCBF.
 
-    Subscribed topics: \gazebo\odom (or \odom or \vicon_odom), \cbf_availability
-    Published topics: \obstacle_1, \obstacle_2, \obstacle_3, \obstacle_4, \obstacle_5, \safe_set_1,
-                        \safe_set_2, \safe_set_3, \safe_set_4, \safe_set_5, \initial_safe_set, \goal_set
+    Subscribed topics: /gazebo/odom (or /odom or /vicon_odom), /cbf_availability
+    Published topics: /obstacle_1, /obstacle_2, /obstacle_3, /obstacle_4, /obstacle_5, /safe_set_1,
+                        /safe_set_2, /safe_set_3, /safe_set_4, /safe_set_5, /initial_safe_set, /goal_set
     """
         
     def __init__(self):

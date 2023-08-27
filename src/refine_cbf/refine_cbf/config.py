@@ -1,6 +1,6 @@
 # Configuration file used to define key parameters for RefineCBF Experimentation
 
-print("Loading Config File...")
+print("Reading from Config File...")
 
 # Generic Python Imports
 import numpy as np
@@ -23,14 +23,14 @@ import hj_reachability as hj
 from refine_cbfs.dynamics import HJControlAffineDynamics
 from cbf_opt import ControlAffineDynamics, ControlAffineCBF, ControlAffineASIF
 from refine_cbf.utils import *
-#from refine_cbf.experiment_obstacles import Obstacles
-from refine_cbf.thesis_obstacles import Obstacles # If you want to use the obstacles from the thesis
+#from refine_cbf.experiment_obstacles import Obstacles  # Custom Obstacles
+from refine_cbf.thesis_obstacles import Obstacles       # If you want to use the obstacles from the thesis
 
 # Save location of experiment data (written to in safety_filter.py, or nominal_policy.py if USE_UNFILTERED_POLICY = True)
 DATA_FILENAME = './experiment_dataset.txt'
 
 # Hardware Experiment
-# If True, transformstamped to odom node will run to allow communication between state feedback in Vicon arena and Rviz (trajectory would not show otherwise)
+# If True, transformstamped to odom node will run so expected state feedback message is received.
 HARDWARE_EXPERIMENT = False
 
 # State Feedback Topic Name (Gazebo: 'gazebo/odom', Turtlebot3: 'odom', VICON: 'vicon/turtlebot/turtlebot')
@@ -148,8 +148,8 @@ GAMMA = 0.25
 CBF_SCALAR = 1.0
 
 # Initial CBF Parameters
-RADIUS_CBF = 0.33 # radius of the circular CBF
-CENTER_CBF = np.array([0.5, 1.0]) # center of the circular CBF
+RADIUS_CBF = 0.33                   # radius of the circular CBF
+CENTER_CBF = np.array([0.5, 1.0])   # center of the circular CBF
 
 # CBF Object
 CBF = DiffDriveCBF(DYNAMICS, {"center": CENTER_CBF, "r": RADIUS_CBF, "scalar": CBF_SCALAR}, test=False)

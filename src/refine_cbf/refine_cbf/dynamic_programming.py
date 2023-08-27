@@ -99,7 +99,7 @@ class DynamicProgramming(Node):
         # save the value function
         print("Saving value function...")
         # save the current cbf to a file - the safety filter and visualization node will load from this file!
-        np.save('./log/cbf.npy', self.cbf)
+        np.save('./cbf.npy', self.cbf)
 
         # publish boolean value indicating a new cbf is available
         self.publish_cbf()

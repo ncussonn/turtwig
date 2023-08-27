@@ -8,8 +8,8 @@ from refine_cbf.config import *
 class SafetyFilter(Node):
     """Safety Filter Node.
 
-    Subscribed topics: \gazebo\odom (or \odom or \vicon_odom), \cbf_availability, \nom_policy
-    Published topics: \cmd_vel, \safety_value
+    Subscribed topics: /gazebo/odom (or /odom or /vicon_odom), /cbf_availability, /nom_policy
+    Published topics: /cmd_vel, /safety_value
     """
 
     def __init__(self):
@@ -150,7 +150,7 @@ class SafetyFilter(Node):
         if USE_REFINECBF:
             if msg.data:
                 self.get_logger().info('New CBF is available, loading new CBF')
-                self.cbf = jnp.load('./log/cbf.npy')
+                self.cbf = jnp.load('./cbf.npy')
                 self.tabular_cbf.vf_table = np.array(self.cbf)
                 self.diffdrive_asif.cbf = self.tabular_cbf
         else:
