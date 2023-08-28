@@ -11,7 +11,8 @@ grid_upper_bound    = jnp.array([2., 2., jnp.pi])                # highest value
 grid_resolution_dictionary = {'x':61, 'y':61, 'theta':61}       # number of grid points in each dimension 
                                                                 # CRITICALLY IMPORTANT NOTE: This resolution must be the same as the resolution used in config.py.
                                                                 # NOTE: This resolution will scale computation time exponentially!
-filename = "./nominal_policy_table_2.npy"   # where you want to save the nominal policy table
+filename = "./nominal_policy_table_2.npy"       # where you want to save the nominal policy table
+refineCBF_directory = '/home/<user>/refineCBF'  # directory where refineCBF package from Sander Tonkens is located
 vmin = 0.1                                  # minimum linear velocity of turtlebot3 burger
 vmax = 0.21                                 # maximum linear velocity of turtlebot3 burger
 wmax = 1.3                                  # maximum angular velocity of turtlebot3 burger
@@ -29,7 +30,7 @@ import jax.numpy as jnp
 import sys
 import hj_reachability as hj
 
-sys.path.insert(0, '/home/nate/refineCBF')
+sys.path.insert(0, refineCBF_directory)
 
 import refine_cbfs # Sander's refine cbf Python packaged
 from refine_cbfs.dynamics import HJControlAffineDynamics # imports the class HJControlAffineDynamics
