@@ -29,26 +29,28 @@ To run a minimal example in Gazebo simulator:
 Build the package from root of your workspace:
 ```
 cd ~/<refine_cbf_ws>
-source /opt/ros/foxy/setup.bash
+source /opt/ros/<ros2_distro>/setup.bash
 colcon build --symlink-install --packages-select refine_cbf
 ```
 
 Gazebo Terminal:
 ```
+source /opt/ros/<ros2_distro>/setup.bash
 source ~/<refine_cbf_ws>/install/setup.bash
 ros2 launch turtlebot3_gazebo refine_cbf_experiment.launch.py
 ```
   
 RVIZ Terminal:
 ```
-source /opt/ros/<ros2_distro>/setup.bash`
+source /opt/ros/<ros2_distro>/setup.bash
 rviz2
 ```
-Apply the provided rviz config file: `refine_cbf.rviz`
+Apply (open) the provided rviz config file: `refine_cbf.rviz`
 
 
 RefineCBF Terminal:
 ```
+source /opt/ros/<ros2_distro>/setup.bash
 cd ~/<refine_cbf_ws>/turtwig # Must be run in the root of workspace for relative folder pointers!
 ros2 launch refine_cbf refine_cbf_launch.py
 ```
